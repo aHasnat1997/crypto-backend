@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model VaultReport {
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  date             DateTime
+  lastUpdated      DateTime
+  nav              Nav
+  allocations      AllocationGroup
+  assetPerformance AssetPerformance
+  systemStatus     SystemStatus
+  visualFlags      VisualFlags
+  dailyReportText  String
+  teamNotes        TeamNotes
+}
+
+type Nav {
+  startingNav   Float
+  endingNav     Float
+  growthPercent Float
+  chartData     ChartPoint[]
+}
+
+type ChartPoint {
+  date DateTime
+  nav  Float
+}
+
+type AllocationGroup {
+  A Allocation
+  B Allocation
+  C Allocation
+}
+
+type Allocation {
+  name             String
+  startingBalance  Float
+  dailyGain        Float
+  dailyGainPercent Float
+  endingBalance    Float
+  notes            String
+}
+
+type AssetPerformance {
+  BTC        AssetPrice
+  ETH        AssetPrice
+  Stablecoin StablecoinYield
+}
+
+type AssetPrice {
+  symbol        String
+  open          Float
+  close         Float
+  changePercent Float
+  volumeUsd     Float
+}
+
+type StablecoinYield {
+  yieldDailyPercent Float
+  platforms         YieldPlatform[]
+}
+
+type YieldPlatform {
+  name  String
+  asset String
+}
+
+type SystemStatus {
+  routingActive      Boolean
+  hedgingEngaged     Boolean
+  smartLayerUnlocked Boolean
+  dashboardBetaMode  Boolean
+  lastSyncSuccess    Boolean
+}
+
+type VisualFlags {
+  smartRouting         String
+  hedgingOperational   String
+  stablecoinYieldLayer String
+  systemSync           String
+}
+
+type TeamNotes {
+  devStatus       String
+  developer       String
+  expectedPreview String
+  dataEntryMode   String
+}

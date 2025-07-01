@@ -1,0 +1,10 @@
+# Exclude node_modules directory
+node_modules
+
+# Exclude other unnecessary files and directories
+.git
+.gitignore
+README.md
+.vercel
+.vscode
+note
