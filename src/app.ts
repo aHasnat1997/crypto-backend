@@ -81,8 +81,27 @@ export class Rocket {
    */
   launch(port: number) {
     this.server = this.app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
+      if (!this.server) {
+        console.error('🚀 Rocket is failed to start');
+        return;
+      }
+
+      const address = this.server.address();
+      let host: string;
+
+      if (typeof address === 'string') {
+        host = address;
+      } else if (address) {
+        const hostname = address.address === '::' ? 'localhost' : address.address;
+        host = `${hostname}:${address.port}`;
+      } else {
+        host = `localhost:${port}`;
+      }
+
+      console.log(`🚀 Rocket is launched on http://${host}`);
+      // console.log(`🌐 Client URL: ${this.config.CLIENT_URL}`);
     });
+
     return this.server;
   }
 }

@@ -27,6 +27,10 @@ export type TAppConfig = {
     API_KEY: string;
     API_SECRET: string;
   };
+  API_KEY: {
+    COINMARKETCAP_API_KEY: string;
+    API_NINJAS_KEY: string;
+  }
 };
 
 const Config: TAppConfig = {
@@ -55,6 +59,10 @@ const Config: TAppConfig = {
     CLOUD_NAME: process.env.CLOUD_NAME as string,
     API_KEY: process.env.API_KEY as string,
     API_SECRET: process.env.API_SECRET as string
+  },
+  API_KEY: {
+    COINMARKETCAP_API_KEY: process.env.COINMARKETCAP_API_KEY as string,
+    API_NINJAS_KEY: process.env.API_NINJAS_KEY as string
   }
 };
 
