@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Prisma Boilerplate Documentation</title>
+  <link rel="icon" type="image/x-icon" href="./assets/icon.png">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --secondary: #1e40af;
+      --text: #1f2937;
+      --bg: #f9fafb;
+      --code-bg: #f3f4f6;
+      --border: #e5e7eb;
+    }
+
+    body.dark-mode {
+      --primary: #60a5fa;
+      --secondary: #93c5fd;
+      --text: #f3f4f6;
+      --bg: #18181b;
+      --code-bg: #27272a;
+      --border: #3b4252;
+      /* Lighter border for dark mode */
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      padding: 2rem;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark-mode .container {
+      background: #23272f;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: var(--primary);
+      margin: 1.5rem 0 1rem;
+      transition: color 0.3s;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--secondary);
+    }
+
+    p {
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1rem 0;
+      transition: background 0.3s;
+    }
+
+    code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.9rem;
+    }
+
+    .section {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+
+    .endpoint {
+      background: var(--bg);
+      padding: 1rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+      transition: background 0.3s;
+    }
+
+    .method {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+
+    .get {
+      background: #10B981;
+      color: white;
+    }
+
+    .post {
+      background: #3B82F6;
+      color: white;
+    }
+
+    .put {
+      background: #F59E0B;
+      color: white;
+    }
+
+    .delete {
+      background: #EF4444;
+      color: white;
+    }
+
+    ul,
+    ol {
+      margin-left: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .feature-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    body.dark-mode .feature-card {
+      background: #23272f;
+      border-color: var(--border);
+    }
+
+    .feature-card h3 {
+      color: var(--secondary);
+      margin-top: 0;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      z-index: 100;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: background 0.3s, color 0.3s, border-color 0.3s;
+    }
+
+    .theme-toggle:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+  <div class="container">
+    <h1>🚀 Prisma Boilerplate Documentation</h1>
+
+    <div class="section">
+      <h2>📦 Features</h2>
+      <div class="features">
+        <div class="feature-card">
+          <h3>🔧 Modern Stack</h3>
+          <p>Built with Express.js, Prisma, TypeScript, and Socket.IO</p>
+        </div>
+        <div class="feature-card">
+          <h3>🏗️ Modular Architecture</h3>
+          <p>Feature-based modules with controllers and services</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔍 Advanced Queries</h3>
+          <p>Pagination, search, filter, sort, and relation support</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔐 Authentication</h3>
+          <p>JWT-based auth with secure cookie handling</p>
+        </div>
+        <div class="feature-card">
+          <h3>🐳 Docker Ready</h3>
+          <p>Production-ready Docker and Nginx setup</p>
+        </div>
+        <div class="feature-card">
+          <h3>🎯 Type Safety</h3>
+          <p>Full TypeScript support with proper typing</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>⚡ Quick Start</h2>
+      <h3>Installation</h3>
+      <pre><code>git clone &lt;repository-url&gt;
+cd prisma-boilerplate
+npm install</code></pre>
+
+      <h3>Environment Setup</h3>
+      <p>Create a .env file in the root directory:</p>
+      <pre><code>DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+JWT_SECRET="your-secret-key"
+PORT=3000</code></pre>
+
+      <h3>Database Setup</h3>
+      <pre><code>npx prisma generate
+npx prisma migrate dev</code></pre>
+
+      <h3>Running the Application</h3>
+      <pre><code># Development
+npm run dev
+
+# Production
+npm run build
+npm start</code></pre>
+
+      <h3>Docker Setup</h3>
+      <pre><code># Build and run with Docker Compose
+docker-compose up --build</code></pre>
+    </div>
+
+    <div class="section">
+      <h2>🔌 API Endpoints</h2>
+
+      <h3>Authentication</h3>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/api/v1/auth/register</code>
+        <p>Register a new user</p>
+        <pre><code>{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe"
+}</code></pre>
+      </div>
+
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/api/v1/auth/login</code>
+        <p>Login with credentials</p>
+      </div>
+
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <code>/api/v1/auth/me</code>
+        <p>Get current user profile</p>
+      </div>
+
+      <h3>Users</h3>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <code>/api/v1/users</code>
+        <p>Get users with advanced query support:</p>
+        <pre><code># Pagination
+?page=1&limit=10
+
+# Search
+?search=john
+
+# Filter
+?filter[role]=admin
+
+# Sort
+?sort=createdAt:desc
+
+# Select Fields
+?fields=id,name,email
+
+# Include Relations
+?include=posts,comments</code></pre>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🛠️ Project Structure</h2>
+      <pre><code>src/
+├── app.ts                 # Main application class
+├── server.ts              # Server entry point
+├── config/               # Configuration
+├── db/                   # Database setup
+├── modules/              # Feature modules
+│   ├── auth/            # Authentication module
+│   ├── user/            # User module
+│   └── example/         # Example module
+├── routes/              # Route definitions
+├── sockets/            # Socket.IO setup
+└── utils/              # Utilities</code></pre>
+    </div>
+
+    <div class="section">
+      <h2>🔄 Adding New Modules</h2>
+      <p>1. Create a new directory in <code>src/modules/your-module</code></p>
+      <p>2. Create the following files:</p>
+      <ul>
+        <li><code>your-module.model.ts</code> - Prisma model definition</li>
+        <li><code>your-module.routes.ts</code> - Route definitions</li>
+        <li><code>YourModuleController.ts</code> - Controller logic</li>
+        <li><code>YourModuleService.ts</code> - Business logic</li>
+      </ul>
+      <p>3. Register your module in <code>src/config/initControllers.ts</code></p>
+    </div>
+
+    <div class="section">
+      <h2>🚀 Advanced Features</h2>
+      <h3>Query Builder</h3>
+      <p>All endpoints support advanced query features:</p>
+      <ul>
+        <li>Pagination with page and limit</li>
+        <li>Search across specified fields</li>
+        <li>Filter by any field with operators</li>
+        <li>Sort by multiple fields</li>
+        <li>Select specific fields</li>
+        <li>Include related data</li>
+      </ul>
+
+      <h3>Socket.IO</h3>
+      <p>WebSocket support is available through Socket.IO:</p>
+      <pre><code>// Client-side connection
+const socket = io('http://localhost:3000');
+
+// Listen for events
+socket.on('eventName', (data) => {
+  console.log(data);
+});</code></pre>
+    </div>
+
+    <div class="section">
+      <h2>🔒 Security Features</h2>
+      <ul>
+        <li>JWT-based authentication</li>
+        <li>Secure cookie handling</li>
+        <li>Rate limiting</li>
+        <li>CORS protection</li>
+        <li>Helmet security headers</li>
+        <li>Input validation</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🌟 Contributing</h2>
+      <p>Contributions are welcome! Please feel free to submit a Pull Request.</p>
+    </div>
+  </div>
+  <script>
+    // Theme toggle logic
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme');
+    function setTheme(dark) {
+      document.body.classList.toggle('dark-mode', dark);
+      themeToggle.textContent = dark ? '☀️' : '🌙';
+    }
+    setTheme(savedTheme === 'dark' || (!savedTheme && prefersDark));
+    themeToggle.onclick = () => {
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+    };
+  </script>
+</body>
+
+</html>
