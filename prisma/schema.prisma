@@ -18,6 +18,90 @@ model User {
   fullName  String
   password  String
   role      UserRole
+  isDeleted Boolean? @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+
+  dailyReports DailyReport[]
+}
+
+model DailyReport {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  note      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PortfolioData {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  date            String   @unique
+  lastUpdated     String
+  startingNav     Float
+  endingNav       Float
+  growthPercent   Float
+  dailyReportText String
+  systemStatus    String // JSON string
+  visualFlags     String // JSON string
+  teamNotes       String // JSON string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Allocation {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  key              String // A, B, C
+  name             String
+  startingBalance  Float
+  dailyGain        Float
+  dailyGainPercent Float
+  endingBalance    Float
+  notes            String
+  date             String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AssetPerformance {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  symbol        String // BTC, ETH, etc.
+  open          Float
+  close         Float
+  changePercent Float
+  volumeUsd     Float
+  date          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ChartData {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  date      String
+  nav       Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StablecoinYield {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  date         String
+  yieldPercent Float
+  platform     String
+  asset        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemStatus {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  date               String   @unique
+  routingActive      Boolean  @default(true)
+  hedgingEngaged     Boolean  @default(true)
+  smartLayerUnlocked Boolean  @default(true)
+  dashboardBetaMode  Boolean  @default(true)
+  lastSyncSuccess    Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }

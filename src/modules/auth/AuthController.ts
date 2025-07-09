@@ -24,8 +24,8 @@ export class AuthController {
   async login(req: Request, res: Response) {
     const result = await this.service.login(req.body, res);
     successResponse(res, {
-      message: result,
-      data: null
+      message: 'Successfully Login',
+      data: result
     }, HTTPStatusCode.Ok);
   }
 

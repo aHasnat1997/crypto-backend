@@ -4,6 +4,7 @@ import { Response, Request } from 'express';
 import { UserRole } from '@prisma/client';
 import { Token } from '../../utils/token';
 import { TTokenPayload } from '../../types/token.type';
+import { TUser } from '../../types/users.type';
 
 export class AuthService {
   private app: Rocket;
@@ -11,13 +12,14 @@ export class AuthService {
     this.app = app;
   }
 
-  async register(data: { email: string; password: string; fullName: string; role: UserRole }) {
+  async register(data: TUser) {
     const { email, password, fullName, role } = data;
     const existing = await this.app.db.client.user.findUnique({ where: { email } });
     if (existing) {
       throw new Error('Email already exists');
     }
-    const hashed = await bcrypt.hash(password, this.app.config.BCRYPT_SALT_ROUNDS);
+
+    const hashed = await bcrypt.hash(password, Number(this.app.config.BCRYPT_SALT_ROUNDS));
     const user = await this.app.db.client.user.create({
       data: { email, password: hashed, fullName, role },
       select: { email: true, fullName: true }
@@ -47,7 +49,12 @@ export class AuthService {
       this.app.config.TOKEN.TOKEN_EXPIRES_TIME
     );
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    return 'Successfully Login';
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role
+    };
   }
 
   async logout(res: Response) {
