@@ -261,13 +261,24 @@ export class CryptoService {
   }
 
   /**
-   * Save data to database using Prisma
-   */
+ * Save data to database using Prisma with upsert to handle duplicates
+ */
   private async saveToPrisma(data: TPortfolioData): Promise<void> {
     try {
-      // Save main portfolio data
-      await this.app.db.client.portfolioData.create({
-        data: {
+      // Save main portfolio data using upsert
+      await this.app.db.client.portfolioData.upsert({
+        where: { date: data.date },
+        update: {
+          lastUpdated: data.last_updated,
+          startingNav: data.nav.starting_nav,
+          endingNav: data.nav.ending_nav,
+          growthPercent: data.nav.growth_percent,
+          dailyReportText: data.daily_report_text,
+          systemStatus: JSON.stringify(data.system_status),
+          visualFlags: JSON.stringify(data.visual_flags),
+          teamNotes: JSON.stringify(data.team_notes)
+        },
+        create: {
           date: data.date,
           lastUpdated: data.last_updated,
           startingNav: data.nav.starting_nav,
@@ -278,6 +289,11 @@ export class CryptoService {
           visualFlags: JSON.stringify(data.visual_flags),
           teamNotes: JSON.stringify(data.team_notes)
         }
+      });
+
+      // Clear existing allocations for this date and recreate them
+      await this.app.db.client.allocation.deleteMany({
+        where: { date: data.date }
       });
 
       // Save allocations
@@ -296,6 +312,11 @@ export class CryptoService {
         });
       }
 
+      // Clear existing asset performance for this date and recreate
+      await this.app.db.client.assetPerformance.deleteMany({
+        where: { date: data.date }
+      });
+
       // Save asset performance
       for (const [symbol, performance] of Object.entries(data.asset_performance)) {
         if (symbol !== 'Stablecoin') {
@@ -311,6 +332,13 @@ export class CryptoService {
           });
         }
       }
+
+      // For chart data, you might want to upsert each point or clear old data
+      // Clear existing chart data for these dates and recreate
+      const chartDates = data.nav.chart_data.map(point => point.date);
+      await this.app.db.client.chartData.deleteMany({
+        where: { date: { in: chartDates } }
+      });
 
       // Save chart data
       for (const point of data.nav.chart_data) {
@@ -404,8 +432,8 @@ export class CryptoService {
   private startAutomatedDataCollection(): void {
     console.log('🔄 Starting automated crypto data collection...');
 
-    // Update every 5 minutes
-    cron.schedule('*/5 * * * *', async () => {
+    // Update every 1 minutes
+    cron.schedule('*/1 * * * *', async () => {
       try {
         await this.processAndUpdateData();
       } catch (error) {
