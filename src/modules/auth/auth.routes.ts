@@ -12,6 +12,7 @@ export function registerAuthRoutes(app: Rocket & { authController: AuthControlle
 
   router.post(
     '/auth/register',
+    authGuard('ADMIN'),
     validateRequest(AuthValidation.registrationSchema),
     handelAsyncReq(controller.register.bind(controller))
   );

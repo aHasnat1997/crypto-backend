@@ -2,7 +2,7 @@ import { StringValue } from "ms";
 
 export type TAppConfig = {
   PORT: number;
-  CLIENT_URL: string;
+  CLIENT_URLS: string[];
   DATABASE_URL: string;
   BCRYPT_SALT_ROUNDS: string;
   DEFAULT_USER_PASS: string;
@@ -35,7 +35,7 @@ export type TAppConfig = {
 
 const Config: TAppConfig = {
   PORT: Number(process.env.PORT),
-  CLIENT_URL: process.env.CLIENT_URL as string,
+  CLIENT_URLS: process.env.CLIENT_URLS ? process.env.CLIENT_URLS.split(',').map(url => url.trim()) : [],
   DATABASE_URL: process.env.DATABASE_URL as string,
   BCRYPT_SALT_ROUNDS: process.env.BCRYPT_SALT_ROUNDS as string,
   DEFAULT_USER_PASS: process.env.DEFAULT_PASS as string,
