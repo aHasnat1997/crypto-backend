@@ -4,6 +4,7 @@ import { CryptoValidation } from './crypto.validation';
 import successResponse from '../../utils/successResponse';
 import { HTTPStatusCode } from '../../utils/httpCode';
 import { CryptoService } from './crypto.service';
+import z from 'zod';
 
 export class CryptoController {
   private app: Rocket;
@@ -14,9 +15,40 @@ export class CryptoController {
     this.service = new CryptoService(app);
   }
 
-  /**
-   * Get latest portfolio data
-   */
+  async createAllocation(req: Request, res: Response) {
+    try {
+      const schema = z.object({
+        key: z.enum(['A', 'B', 'C']),
+        name: z.string().min(3),
+        initialBalance: z.number().min(0),
+        date: z.string().optional().default(new Date().toISOString().split('T')[0])
+      });
+
+      const validation = schema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(HTTPStatusCode.BadRequest).json({
+          success: false,
+          message: 'Invalid request body',
+          errors: validation.error.errors
+        });
+      }
+
+      const result = await this.service.createAllocation(validation.data);
+
+      successResponse(res, {
+        message: 'Allocation created successfully',
+        data: result
+      }, HTTPStatusCode.Created);
+    } catch (error) {
+      console.error('Error in createAllocation:', error);
+      return res.status(HTTPStatusCode.InternalServerError).json({
+        success: false,
+        message: 'Failed to create allocation',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
   async getLatestPortfolio(req: Request, res: Response) {
     try {
       const result = await this.service.getLatestData();
@@ -43,13 +75,16 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get NAV history
-   */
   async getNavHistory(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.portfolioDataSchema.safeParse(req.query);
+      const schema = z.object({
+        days: z.preprocess(
+          val => Number(val),
+          z.number().min(1).max(365).optional().default(30)
+        )
+      });
+
+      const validation = schema.safeParse(req.query);
       if (!validation.success) {
         return res.status(HTTPStatusCode.BadRequest).json({
           success: false,
@@ -58,8 +93,8 @@ export class CryptoController {
         });
       }
 
-      const { days = 30 } = validation.data;
-      const result = await this.service.getNavHistory(Number(days));
+      const { days } = validation.data;
+      const result = await this.service.getNavHistory(days);
 
       successResponse(res, {
         message: 'NAV history retrieved successfully',
@@ -75,13 +110,13 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get allocation data
-   */
   async getAllocations(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.allocationSchema.safeParse(req.query);
+      const schema = z.object({
+        date: z.string().optional()
+      });
+
+      const validation = schema.safeParse(req.query);
       if (!validation.success) {
         return res.status(HTTPStatusCode.BadRequest).json({
           success: false,
@@ -92,10 +127,11 @@ export class CryptoController {
 
       const { date } = validation.data;
       const result = await this.service.getAllocations(date);
+      const allocationsArray = Object.values(result);
 
       successResponse(res, {
         message: 'Allocation data retrieved successfully',
-        data: result
+        data: allocationsArray // Now it matches TAllocationData[]
       }, HTTPStatusCode.Ok);
     } catch (error) {
       console.error('Error in getAllocations:', error);
@@ -107,13 +143,17 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get asset performance data
-   */
   async getAssetPerformance(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.assetPerformanceSchema.safeParse(req.query);
+      const schema = z.object({
+        symbol: z.enum(['BTC', 'ETH', 'USDC']).optional(),
+        days: z.preprocess(
+          val => Number(val),
+          z.number().min(1).max(30).optional().default(7)
+        )
+      });
+
+      const validation = schema.safeParse(req.query);
       if (!validation.success) {
         return res.status(HTTPStatusCode.BadRequest).json({
           success: false,
@@ -122,8 +162,8 @@ export class CryptoController {
         });
       }
 
-      const { symbol, days = 7 } = validation.data;
-      const result = await this.service.getAssetPerformance(symbol, Number(days));
+      const { symbol, days } = validation.data;
+      const result = await this.service.getAssetPerformance(symbol, days);
 
       successResponse(res, {
         message: 'Asset performance data retrieved successfully',
@@ -139,13 +179,13 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get chart data for visualization
-   */
   async getChartData(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.chartDataSchema.safeParse(req.query);
+      const schema = z.object({
+        period: z.enum(['7d', '30d', '90d', '1y']).optional().default('7d')
+      });
+
+      const validation = schema.safeParse(req.query);
       if (!validation.success) {
         return res.status(HTTPStatusCode.BadRequest).json({
           success: false,
@@ -154,7 +194,7 @@ export class CryptoController {
         });
       }
 
-      const { period = '7d' } = validation.data;
+      const { period } = validation.data;
 
       let days = 7;
       if (period === '30d') days = 30;
@@ -181,21 +221,8 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get system status
-   */
   async getSystemStatus(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.systemStatusSchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(HTTPStatusCode.BadRequest).json({
-          success: false,
-          message: 'Invalid request parameters',
-          errors: validation.error.errors
-        });
-      }
-
       const latestData = await this.service.getLatestData();
 
       if (!latestData) {
@@ -227,9 +254,6 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get current crypto prices
-   */
   async getCurrentPrices(req: Request, res: Response) {
     try {
       const latestData = await this.service.getLatestData();
@@ -262,9 +286,6 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get portfolio summary
-   */
   async getPortfolioSummary(req: Request, res: Response) {
     try {
       const latestData = await this.service.getLatestData();
@@ -278,13 +299,13 @@ export class CryptoController {
       }
 
       const summary = {
-        nav: latestData.nav,
+        nav: latestData.nav.ending_nav,
         total_allocations: Object.keys(latestData.allocations).length,
         allocation_breakdown: Object.entries(latestData.allocations).map(([key, allocation]) => ({
           key,
           name: allocation.name,
-          ending_balance: allocation.ending_balance,
-          daily_gain_percent: allocation.daily_gain_percent
+          ending_balance: allocation.current_balance,
+          daily_gain_percent: allocation.history[0]?.minute_gain_percent || 0
         })),
         daily_report: latestData.daily_report_text,
         last_updated: latestData.last_updated
@@ -304,21 +325,8 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Trigger manual data update
-   */
   async triggerManualUpdate(req: Request, res: Response) {
     try {
-      // Validate request parameters
-      const validation = CryptoValidation.manualUpdateSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(HTTPStatusCode.BadRequest).json({
-          success: false,
-          message: 'Invalid request parameters',
-          errors: validation.error.errors
-        });
-      }
-
       const result = await this.service.triggerManualUpdate();
 
       successResponse(res, {
@@ -335,12 +343,16 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get allocation performance comparison
-   */
   async getAllocationComparison(req: Request, res: Response) {
     try {
-      const validation = CryptoValidation.portfolioDataSchema.safeParse(req.query);
+      const schema = z.object({
+        days: z.preprocess(
+          val => Number(val),
+          z.number().min(1).max(365).optional().default(7)
+        )
+      });
+
+      const validation = schema.safeParse(req.query);
       if (!validation.success) {
         return res.status(HTTPStatusCode.BadRequest).json({
           success: false,
@@ -349,10 +361,10 @@ export class CryptoController {
         });
       }
 
-      const { days = 7 } = validation.data;
+      const { days } = validation.data;
       const allocations = await this.service.getAllocations();
 
-      if (!allocations || allocations.length === 0) {
+      if (!allocations || Object.keys(allocations).length === 0) {
         return res.status(HTTPStatusCode.NotFound).json({
           success: false,
           message: 'No allocation data found',
@@ -360,19 +372,15 @@ export class CryptoController {
         });
       }
 
-      // Group allocations by key and calculate performance
-      const comparisonData = allocations.reduce((acc: any, allocation: any) => {
-        if (!acc[allocation.key]) {
-          acc[allocation.key] = {
-            name: allocation.name,
-            performance: []
-          };
-        }
-        acc[allocation.key].performance.push({
-          date: allocation.date,
-          daily_gain_percent: allocation.dailyGainPercent,
-          ending_balance: allocation.endingBalance
-        });
+      const comparisonData = Object.entries(allocations).reduce((acc, [key, allocation]) => {
+        acc[key] = {
+          name: allocation.name,
+          performance: allocation.history.map(h => ({
+            date: new Date(h.createdAt).toISOString().split('T')[0],
+            daily_gain_percent: h.minute_gain_percent,
+            ending_balance: h.ending_balance
+          })).slice(0, days)
+        };
         return acc;
       }, {} as any);
 
@@ -390,9 +398,6 @@ export class CryptoController {
     }
   }
 
-  /**
-   * Get health check endpoint
-   */
   async getHealthCheck(req: Request, res: Response) {
     try {
       const latestData = await this.service.getLatestData();
@@ -402,7 +407,7 @@ export class CryptoController {
         status: isHealthy ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
         services: {
-          database: true, // Assume healthy if we can query
+          database: true,
           api_integration: latestData?.system_status.last_sync_success || false,
           automated_updates: latestData?.system_status.routing_active || false
         },
@@ -424,4 +429,4 @@ export class CryptoController {
       });
     }
   }
-};
+}

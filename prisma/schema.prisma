@@ -37,8 +37,9 @@ model DailyReport {
 
 model PortfolioData {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  date            String   @unique
-  lastUpdated     String
+  date            String // YYYY-MM-DD
+  minuteKey       String // YYYY-MM-DD-HH-MM
+  lastUpdated     String // ISO timestamp
   startingNav     Float
   endingNav       Float
   growthPercent   Float
@@ -48,20 +49,40 @@ model PortfolioData {
   teamNotes       String // JSON string
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@unique([date, minuteKey])
+  @@index([minuteKey])
 }
 
 model Allocation {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  key              String // A, B, C
-  name             String
-  startingBalance  Float
-  dailyGain        Float
-  dailyGainPercent Float
-  endingBalance    Float
-  notes            String
-  date             String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  key               String // A, B, C
+  name              String
+  date              String // YYYY-MM-DD
+  currentBalance    Float // Current balance (replaces endingBalance)
+  history           String // JSON array of AllocationHistory
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  AllocationHistory AllocationHistory[]
+
+  @@unique([key, date])
+  @@index([date])
+}
+
+model AllocationHistory {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  allocationId      String     @db.ObjectId
+  allocation        Allocation @relation(fields: [allocationId], references: [id])
+  minuteKey         String // YYYY-MM-DD-HH-MM
+  startingBalance   Float
+  minuteGain        Float
+  minuteGainPercent Float
+  endingBalance     Float
+  notes             String
+  createdAt         DateTime   @default(now())
+
+  @@index([minuteKey])
+  @@index([allocationId])
 }
 
 model AssetPerformance {
@@ -72,36 +93,33 @@ model AssetPerformance {
   changePercent Float
   volumeUsd     Float
   date          String
+  minuteKey     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([minuteKey])
 }
 
 model ChartData {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   date      String
   nav       Float
+  datetime  String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model StablecoinYield {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  date         String
-  yieldPercent Float
-  platform     String
-  asset        String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-model SystemStatus {
+model SystemStatusLog {
   id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  date               String   @unique
+  date               String
+  minuteKey          String
   routingActive      Boolean  @default(true)
-  hedgingEngaged     Boolean  @default(true)
+  hedgingEngaged     Boolean  @default(false)
   smartLayerUnlocked Boolean  @default(true)
   dashboardBetaMode  Boolean  @default(true)
   lastSyncSuccess    Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([minuteKey])
 }

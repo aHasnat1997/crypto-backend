@@ -19,11 +19,16 @@ export interface TNavData {
 
 export interface TAllocationData {
   name: string;
-  starting_balance: number;
-  daily_gain: number;
-  daily_gain_percent: number;
-  ending_balance: number;
-  notes: string;
+  current_balance: number;
+  history: Array<{
+    minuteKey: string;
+    starting_balance: number;
+    minute_gain: number;
+    minute_gain_percent: number;
+    ending_balance: number;
+    notes: string;
+    createdAt: string;
+  }>;
 }
 
 export interface TAssetPerformance {
@@ -41,10 +46,10 @@ export interface TPortfolioData {
     starting_nav: number;
     ending_nav: number;
     growth_percent: number;
-    chart_data: Array<{
-      date: string;
+    chart_data: {
+      datetime: string;
       nav: number;
-    }>;
+    }[];
   };
   allocations: {
     [key: string]: TAllocationData;
