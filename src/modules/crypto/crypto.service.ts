@@ -1,11 +1,13 @@
 import { Rocket } from '../../app';
 import axios from 'axios';
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import {
   TPortfolioData,
   TCoinMarketCapResponse,
   TApiNinjasResponse,
-  TUpdateCryptoData
+  TUpdateCryptoData,
+  TAllocationData,
+  TAssetPerformance
 } from '../../types/crypto.type';
 
 export class CryptoService {
@@ -16,15 +18,20 @@ export class CryptoService {
     B: { name: 'Ethereum Allocation', weight: 0.267 },
     C: { name: 'Stablecoin Allocation', weight: 0.243 }
   };
+  private isRunning = false;
+  private cronJob: ScheduledTask | null = null;
+  private isUpdating = false;
+  private marketTrend = 0; // Added missing property
 
   constructor(app: Rocket) {
     this.app = app;
     this.startAutomatedDataCollection();
   }
 
-  /**
-   * Fetch crypto prices from CoinMarketCap API
-   */
+  private getMinuteKey(date: Date = new Date()): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${String(date.getHours()).padStart(2, '0')}-${String(date.getMinutes()).padStart(2, '0')}`;
+  };
+
   private async fetchCoinMarketCapPrices(): Promise<TUpdateCryptoData | null> {
     try {
       const response = await axios.get<TCoinMarketCapResponse>(
@@ -43,7 +50,7 @@ export class CryptoService {
       );
 
       const data = response.data.data;
-
+      this.marketTrend = data.BTC?.quote.USD.percent_change_24h || 0; // Update market trend
       return {
         btcPrice: data.BTC?.quote.USD.price || 0,
         ethPrice: data.ETH?.quote.USD.price || 0,
@@ -59,9 +66,6 @@ export class CryptoService {
     }
   }
 
-  /**
-   * Fetch crypto prices from API Ninjas (fallback)
-   */
   private async fetchApiNinjasPrices(): Promise<TUpdateCryptoData | null> {
     try {
       const [btcResponse, ethResponse] = await Promise.all([
@@ -81,13 +85,17 @@ export class CryptoService {
         )
       ]);
 
+      const btcPrice = parseFloat(btcResponse.data.price);
+      const ethPrice = parseFloat(ethResponse.data.price);
+      this.marketTrend = btcPrice > 50000 ? 1 : -1; // Simple trend detection
+
       return {
-        btcPrice: parseFloat(btcResponse.data.price),
-        ethPrice: parseFloat(ethResponse.data.price),
+        btcPrice,
+        ethPrice,
         usdcPrice: 1.0,
-        btcChange: (Math.random() - 0.5) * 10, // Simulate since API Ninjas doesn't provide 24h change
+        btcChange: (Math.random() - 0.5) * 10,
         ethChange: (Math.random() - 0.5) * 8,
-        btcVolume: 24300000000, // Estimated values
+        btcVolume: 24300000000,
         ethVolume: 14500000000
       };
     } catch (error) {
@@ -96,9 +104,6 @@ export class CryptoService {
     }
   }
 
-  /**
-   * Fetch real-time crypto prices with fallback
-   */
   private async fetchCryptoPrices(): Promise<TUpdateCryptoData> {
     let prices = await this.fetchCoinMarketCapPrices();
 
@@ -108,12 +113,15 @@ export class CryptoService {
 
     if (!prices) {
       // Fallback to simulated data
+      const simulatedTrend = Math.random() > 0.5 ? 1 : -1;
+      this.marketTrend = simulatedTrend * (2 + Math.random() * 3); // Random trend between 2-5%
+
       prices = {
         btcPrice: 104870 + (Math.random() - 0.5) * 2000,
         ethPrice: 2530 + (Math.random() - 0.5) * 100,
         usdcPrice: 1.0,
-        btcChange: (Math.random() - 0.5) * 10,
-        ethChange: (Math.random() - 0.5) * 8,
+        btcChange: simulatedTrend * (2 + Math.random() * 3),
+        ethChange: simulatedTrend * (1.5 + Math.random() * 2.5),
         btcVolume: 24300000000,
         ethVolume: 14500000000
       };
@@ -122,39 +130,35 @@ export class CryptoService {
     return prices;
   }
 
-  /**
-   * Calculate NAV based on crypto performance
-   */
   private calculateNAV(prices: TUpdateCryptoData, previousNav: number): number {
     const btcWeight = this.ALLOCATIONS_CONFIG.A.weight;
     const ethWeight = this.ALLOCATIONS_CONFIG.B.weight;
     const stableWeight = this.ALLOCATIONS_CONFIG.C.weight;
 
-    const btcChange = (prices.btcChange || 0) / 100;
-    const ethChange = (prices.ethChange || 0) / 100;
-    const stableChange = 0.014 / 100; // Daily stablecoin yield
+    const btcChange = (prices.btcChange || 0) / 100 / 1440;
+    const ethChange = (prices.ethChange || 0) / 100 / 1440;
+    const stableChange = 0.014 / 100 / 1440;
 
-    const portfolioChange = (btcWeight * btcChange) + (ethWeight * ethChange) + (stableWeight * stableChange);
+    const portfolioChange = (btcWeight * btcChange) +
+      (ethWeight * ethChange) +
+      (stableWeight * stableChange);
 
     return previousNav * (1 + portfolioChange);
   }
 
-  /**
-   * Generate chart data for the last 5 days
-   */
-  private async generateChartData(currentNav: number): Promise<Array<{ date: string; nav: number }>> {
+  private async generateChartData(currentNav: number, minutes: number = 60): Promise<Array<{ datetime: string; nav: number }>> {
     const chartData = [];
-    const today = new Date();
+    const now = new Date();
 
-    for (let i = 4; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+    for (let i = minutes - 1; i >= 0; i--) {
+      const datetime = new Date(now);
+      datetime.setMinutes(datetime.getMinutes() - i);
 
-      const variance = (Math.random() - 0.5) * 0.02;
-      const nav = currentNav * (1 + variance * i * 0.1);
+      const variance = (Math.random() - 0.5) * 0.002;
+      const nav = currentNav * (1 + variance * i * 0.001);
 
       chartData.push({
-        date: date.toISOString().split('T')[0],
+        datetime: datetime.toISOString(),
         nav: Number(nav.toFixed(2))
       });
     }
@@ -162,58 +166,139 @@ export class CryptoService {
     return chartData;
   }
 
-  /**
-   * Generate allocation data
-   */
-  private generateAllocations(totalNav: number, growthPercent: number) {
-    const allocations: any = {};
+  private async generateAllocations(totalNav: number, growthPercent: number, date: string, minuteKey: string): Promise<Record<string, TAllocationData>> {
+    const allocations: Record<string, TAllocationData> = {};
+    const now = new Date();
 
-    Object.entries(this.ALLOCATIONS_CONFIG).forEach(([key, config]) => {
+    for (const [key, config] of Object.entries(this.ALLOCATIONS_CONFIG)) {
       const startingBalance = totalNav * config.weight;
-      const dailyGain = startingBalance * (growthPercent / 100);
-      const endingBalance = startingBalance + dailyGain;
+      const minuteGain = startingBalance * (growthPercent / 100);
+      const endingBalance = startingBalance + minuteGain;
+
+      // First try to find existing allocation
+      let allocation = await this.app.db.client.allocation.findUnique({
+        where: {
+          key_date: {
+            key,
+            date
+          }
+        },
+        include: {
+          AllocationHistory: true
+        }
+      });
+
+      // If allocation doesn't exist, create it
+      if (!allocation) {
+        allocation = await this.app.db.client.allocation.create({
+          data: {
+            key,
+            name: config.name,
+            date,
+            currentBalance: endingBalance,
+            history: "[]",
+            createdAt: now,
+            updatedAt: now
+          },
+          include: {
+            AllocationHistory: true
+          }
+        });
+      }
+
+      // Create the history entry
+      const historyEntry = await this.app.db.client.allocationHistory.create({
+        data: {
+          allocationId: allocation.id,
+          minuteKey,
+          startingBalance,
+          minuteGain,
+          minuteGainPercent: growthPercent,
+          endingBalance,
+          notes: this.generateAllocationNotes(key),
+          createdAt: now
+        }
+      });
+
+      // Get all history entries for this allocation
+      const historyEntries = await this.app.db.client.allocationHistory.findMany({
+        where: { allocationId: allocation.id },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      // Update the allocation with current balance and serialized history
+      allocation = await this.app.db.client.allocation.update({
+        where: { id: allocation.id },
+        data: {
+          currentBalance: endingBalance,
+          history: JSON.stringify(historyEntries),
+          updatedAt: now
+        },
+        include: {
+          AllocationHistory: true
+        }
+      });
 
       allocations[key] = {
-        name: config.name,
-        starting_balance: Number(startingBalance.toFixed(2)),
-        daily_gain: Number(dailyGain.toFixed(2)),
-        daily_gain_percent: Number(growthPercent.toFixed(2)),
-        ending_balance: Number(endingBalance.toFixed(2)),
-        notes: this.generateAllocationNotes(key)
+        name: allocation.name,
+        current_balance: allocation.currentBalance,
+        history: historyEntries.map(h => ({
+          minuteKey: h.minuteKey,
+          starting_balance: h.startingBalance,
+          minute_gain: h.minuteGain,
+          minute_gain_percent: h.minuteGainPercent,
+          ending_balance: h.endingBalance,
+          notes: h.notes,
+          createdAt: h.createdAt.toISOString()
+        }))
       };
-    });
+    }
 
     return allocations;
   }
 
-  /**
-   * Generate allocation notes
-   */
   private generateAllocationNotes(allocation: string): string {
+    const btcTrend = this.marketTrend > 0 ? 'bullish' : 'bearish';
+    const ethTrend = this.marketTrend > 0 ? 'rising' : 'falling';
+
     const notes = {
-      A: ['Strong BTC momentum', 'Resistance breakthrough', 'Consolidation phase', 'Bullish sentiment'],
-      B: ['ETH following BTC', 'DeFi activity increase', 'Layer 2 adoption', 'Staking rewards active'],
-      C: ['Yield optimization', 'Stable rebalancing', 'High-yield protocols', 'Risk management active']
+      A: [
+        `BTC showing ${btcTrend} momentum`,
+        `Bitcoin ${btcTrend === 'bullish' ? 'breaking resistance' : 'testing support'}`,
+        `${btcTrend === 'bullish' ? 'Increasing' : 'Decreasing'} institutional interest`,
+        `Market sentiment ${btcTrend === 'bullish' ? 'positive' : 'negative'}`
+      ],
+      B: [
+        `ETH ${ethTrend} with ${btcTrend} BTC trend`,
+        `DeFi activity ${ethTrend === 'rising' ? 'increasing' : 'decreasing'}`,
+        `Layer 2 solutions gaining traction`,
+        `${ethTrend === 'rising' ? 'Strong' : 'Weak'} staking activity`
+      ],
+      C: [
+        'Stablecoin yield optimization active',
+        'Rebalancing stablecoin allocations',
+        'Exploring high-yield protocols',
+        'Risk management protocols engaged'
+      ]
     };
 
-    return notes[allocation as keyof typeof notes][Math.floor(Math.random() * 4)];
+    return notes[allocation as keyof typeof notes][
+      Math.floor(Math.random() * notes[allocation as keyof typeof notes].length)
+    ];
   }
 
-  /**
-   * Generate asset performance data
-   */
   private generateAssetPerformance(prices: TUpdateCryptoData) {
     return {
       BTC: {
         symbol: 'BTC',
-        open: Number(((prices.btcPrice || 0) * (1 - (prices.btcChange || 0) / 100)).toFixed(0)),
+        open: Number(((prices.btcPrice || 0) * (1 - (prices.btcChange || 0) / 100 / 1440)).toFixed(0)),
         close: Number((prices.btcPrice || 0).toFixed(0)),
         change_percent: Number((prices.btcChange || 0).toFixed(2)),
         volume_usd: prices.btcVolume || 24300000000
       },
       ETH: {
         symbol: 'ETH',
-        open: Number(((prices.ethPrice || 0) * (1 - (prices.ethChange || 0) / 100)).toFixed(2)),
+        open: Number(((prices.ethPrice || 0) * (1 - (prices.ethChange || 0) / 100 / 1440)).toFixed(2)),
         close: Number((prices.ethPrice || 0).toFixed(2)),
         change_percent: Number((prices.ethChange || 0).toFixed(2)),
         volume_usd: prices.ethVolume || 14500000000
@@ -229,29 +314,26 @@ export class CryptoService {
     };
   }
 
-  /**
-   * Generate daily report text
-   */
-  private generateDailyReport(growthPercent: number, btcChange: number, ethChange: number): string {
-    const today = new Date().toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric'
+  private generateMinuteReport(growthPercent: number, btcChange: number, ethChange: number): string {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
     });
 
-    const performance = growthPercent > 0 ? 'delivered gains' : 'faced headwinds';
-    const btcDirection = btcChange > 0 ? 'surged' : 'declined';
-    const ethDirection = ethChange > 0 ? 'followed suit' : 'lagged behind';
+    const performance = growthPercent > 0 ? 'gained' : 'declined';
+    const btcDirection = btcChange > 0 ? 'up' : 'down';
+    const ethDirection = ethChange > 0 ? 'up' : 'down';
 
-    return `${today} ${performance} with ${Math.abs(growthPercent).toFixed(2)}% portfolio movement as BTC ${btcDirection} ${Math.abs(btcChange).toFixed(2)}% while ETH ${ethDirection} with ${Math.abs(ethChange).toFixed(2)}% change. Automated rebalancing systems maintained optimal exposure across all asset classes.`;
+    return `Minute update at ${timeString}: Portfolio ${performance} ${Math.abs(growthPercent).toFixed(6)}%. BTC ${btcDirection} ${Math.abs(btcChange / 1440).toFixed(4)}%, ETH ${ethDirection} ${Math.abs(ethChange / 1440).toFixed(4)}%.`;
   }
 
-  /**
-   * Get previous NAV from database
-   */
   private async getPreviousNAV(): Promise<number | null> {
     try {
       const latestData = await this.app.db.client.portfolioData.findFirst({
-        orderBy: { date: 'desc' }
+        orderBy: { createdAt: 'desc' }
       });
       return latestData?.endingNav || null;
     } catch (error) {
@@ -260,133 +342,158 @@ export class CryptoService {
     }
   }
 
-  /**
- * Save data to database using Prisma with upsert to handle duplicates
- */
   private async saveToPrisma(data: TPortfolioData): Promise<void> {
-    try {
-      // Save main portfolio data using upsert
-      await this.app.db.client.portfolioData.upsert({
-        where: { date: data.date },
-        update: {
-          lastUpdated: data.last_updated,
-          startingNav: data.nav.starting_nav,
-          endingNav: data.nav.ending_nav,
-          growthPercent: data.nav.growth_percent,
-          dailyReportText: data.daily_report_text,
-          systemStatus: JSON.stringify(data.system_status),
-          visualFlags: JSON.stringify(data.visual_flags),
-          teamNotes: JSON.stringify(data.team_notes)
-        },
-        create: {
-          date: data.date,
-          lastUpdated: data.last_updated,
-          startingNav: data.nav.starting_nav,
-          endingNav: data.nav.ending_nav,
-          growthPercent: data.nav.growth_percent,
-          dailyReportText: data.daily_report_text,
-          systemStatus: JSON.stringify(data.system_status),
-          visualFlags: JSON.stringify(data.visual_flags),
-          teamNotes: JSON.stringify(data.team_notes)
-        }
-      });
+    const MAX_RETRIES = 3;
+    let attempts = 0;
 
-      // Clear existing allocations for this date and recreate them
-      await this.app.db.client.allocation.deleteMany({
-        where: { date: data.date }
-      });
+    while (attempts < MAX_RETRIES) {
+      try {
+        const now = new Date();
+        const minuteKey = this.getMinuteKey(now);
+        const date = new Date().toISOString().split('T')[0];
 
-      // Save allocations
-      for (const [key, allocation] of Object.entries(data.allocations)) {
-        await this.app.db.client.allocation.create({
-          data: {
-            key: key,
-            name: allocation.name,
-            startingBalance: allocation.starting_balance,
-            dailyGain: allocation.daily_gain,
-            dailyGainPercent: allocation.daily_gain_percent,
-            endingBalance: allocation.ending_balance,
-            notes: allocation.notes,
-            date: data.date
+        await this.app.db.client.portfolioData.upsert({
+          where: {
+            date_minuteKey: {
+              date: data.date,
+              minuteKey: minuteKey
+            }
+          },
+          update: {
+            lastUpdated: data.last_updated,
+            startingNav: data.nav.starting_nav,
+            endingNav: data.nav.ending_nav,
+            growthPercent: data.nav.growth_percent,
+            dailyReportText: data.daily_report_text,
+            systemStatus: JSON.stringify(data.system_status),
+            visualFlags: JSON.stringify(data.visual_flags),
+            teamNotes: JSON.stringify(data.team_notes),
+            updatedAt: now
+          },
+          create: {
+            date: data.date,
+            minuteKey: minuteKey,
+            lastUpdated: data.last_updated,
+            startingNav: data.nav.starting_nav,
+            endingNav: data.nav.ending_nav,
+            growthPercent: data.nav.growth_percent,
+            dailyReportText: data.daily_report_text,
+            systemStatus: JSON.stringify(data.system_status),
+            visualFlags: JSON.stringify(data.visual_flags),
+            teamNotes: JSON.stringify(data.team_notes),
+            createdAt: now,
+            updatedAt: now
           }
         });
-      }
 
-      // Clear existing asset performance for this date and recreate
-      await this.app.db.client.assetPerformance.deleteMany({
-        where: { date: data.date }
-      });
+        data.allocations = await this.generateAllocations(
+          data.nav.ending_nav,
+          data.nav.growth_percent,
+          data.date,
+          minuteKey
+        );
 
-      // Save asset performance
-      for (const [symbol, performance] of Object.entries(data.asset_performance)) {
-        if (symbol !== 'Stablecoin') {
-          await this.app.db.client.assetPerformance.create({
-            data: {
-              symbol: symbol,
-              open: performance.open,
-              close: performance.close,
-              changePercent: performance.change_percent,
-              volumeUsd: performance.volume_usd,
-              date: data.date
+        await this.app.db.client.assetPerformance.deleteMany({
+          where: {
+            date: data.date,
+            minuteKey: minuteKey
+          }
+        });
+
+        for (const [symbol, performance] of Object.entries(data.asset_performance)) {
+          if (symbol !== 'Stablecoin') {
+            await this.app.db.client.assetPerformance.create({
+              data: {
+                symbol: symbol,
+                open: performance.open,
+                close: performance.close,
+                changePercent: performance.change_percent,
+                volumeUsd: performance.volume_usd,
+                date: data.date,
+                minuteKey: minuteKey,
+                createdAt: now,
+                updatedAt: now
+              }
+            });
+          }
+        }
+
+        for (const point of data.nav.chart_data) {
+          await this.app.db.client.chartData.upsert({
+            where: {
+              datetime: point.datetime
+            },
+            update: {
+              nav: point.nav,
+              date: point.datetime.split('T')[0],
+              updatedAt: now
+            },
+            create: {
+              datetime: point.datetime,
+              nav: point.nav,
+              date: point.datetime.split('T')[0],
+              createdAt: now,
+              updatedAt: now
             }
           });
         }
-      }
 
-      // For chart data, you might want to upsert each point or clear old data
-      // Clear existing chart data for these dates and recreate
-      const chartDates = data.nav.chart_data.map(point => point.date);
-      await this.app.db.client.chartData.deleteMany({
-        where: { date: { in: chartDates } }
-      });
-
-      // Save chart data
-      for (const point of data.nav.chart_data) {
-        await this.app.db.client.chartData.create({
+        await this.app.db.client.systemStatusLog.create({
           data: {
-            date: point.date,
-            nav: point.nav
+            date: date,
+            minuteKey: minuteKey,
+            routingActive: data.system_status.routing_active,
+            hedgingEngaged: data.system_status.hedging_engaged,
+            smartLayerUnlocked: data.system_status.smart_layer_unlocked,
+            dashboardBetaMode: data.system_status.dashboard_beta_mode,
+            lastSyncSuccess: data.system_status.last_sync_success,
+            createdAt: now,
+            updatedAt: now
           }
         });
-      }
 
-    } catch (error) {
-      console.error('Error saving to database:', error);
-      throw error;
+        return;
+      } catch (error: any) {
+        if (error.code === 'P2034' && attempts < MAX_RETRIES - 1) {
+          attempts++;
+          const delay = Math.pow(2, attempts) * 100;
+          console.warn(`⚠️ Retry attempt ${attempts} after ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        console.error('Error saving minute data:', error);
+        throw error;
+      }
     }
   }
 
-  /**
-   * Main data processing function
-   */
-  async processAndUpdateData(): Promise<TPortfolioData> {
+  async processAndUpdateData(): Promise<TPortfolioData | null> {
+    if (this.isRunning) {
+      console.log('⏳ Update already in progress, skipping this minute');
+      return this.getLatestData() || await this.createInitialData();
+    }
+
+    this.isRunning = true;
+
     try {
-      console.log('🚀 Starting crypto data update...');
+      console.log('⏱️ Starting minute crypto data update...');
 
-      // Fetch real-time data
       const prices = await this.fetchCryptoPrices();
-
-      // Get previous NAV from database or use default
       const previousNav = await this.getPreviousNAV() || this.INITIAL_NAV;
-
-      // Calculate new NAV
       const currentNav = this.calculateNAV(prices, previousNav);
       const growthPercent = ((currentNav - previousNav) / previousNav) * 100;
+      const chartData = await this.generateChartData(currentNav, 60);
 
-      // Generate chart data
-      const chartData = await this.generateChartData(currentNav);
-
-      // Create comprehensive data structure
       const cryptoData: TPortfolioData = {
         date: new Date().toISOString().split('T')[0],
         last_updated: new Date().toISOString(),
         nav: {
           starting_nav: Number(previousNav.toFixed(2)),
           ending_nav: Number(currentNav.toFixed(2)),
-          growth_percent: Number(growthPercent.toFixed(2)),
+          growth_percent: Number(growthPercent.toFixed(6)),
           chart_data: chartData
         },
-        allocations: this.generateAllocations(currentNav, growthPercent),
+        allocations: {},
         asset_performance: this.generateAssetPerformance(prices),
         system_status: {
           routing_active: true,
@@ -397,80 +504,166 @@ export class CryptoService {
         },
         visual_flags: {
           'Smart Routing': 'On',
-          'Hedging Operational': 'Active',
+          'Hedging Operational': Math.random() > 0.1 ? 'Active' : 'Standby',
           'Stablecoin Yield Layer': 'Running',
           'System Sync': 'Stable'
         },
-        daily_report_text: this.generateDailyReport(
+        daily_report_text: this.generateMinuteReport(
           growthPercent,
           prices.btcChange || 0,
           prices.ethChange || 0
         ),
         team_notes: {
-          dev_status: 'Active Dev - Real-time Integration',
+          dev_status: 'Active Dev - Minute Real-time Integration',
           developer: 'Automated System',
           expected_preview: 'Live Now',
-          data_entry_mode: 'API Integration'
+          data_entry_mode: 'Minute API Integration'
         }
       };
 
-      // Save to database
       await this.saveToPrisma(cryptoData);
 
-      console.log('✅ Data updated successfully');
+      console.log('✅ Minute data updated successfully');
       return cryptoData;
 
     } catch (error) {
       console.error('❌ Error processing crypto data:', error);
       throw error;
+    } finally {
+      this.isRunning = false;
     }
   }
 
-  /**
-   * Start automated data collection
-   */
-  private startAutomatedDataCollection(): void {
-    console.log('🔄 Starting automated crypto data collection...');
+  private async createInitialData(): Promise<TPortfolioData> {
+    const prices = {
+      btcPrice: 104870,
+      ethPrice: 2530,
+      usdcPrice: 1.0,
+      btcChange: 0,
+      ethChange: 0,
+      btcVolume: 24300000000,
+      ethVolume: 14500000000
+    };
 
-    // Update every 1 minutes
-    cron.schedule('*/1 * * * *', async () => {
+    const chartData = await this.generateChartData(this.INITIAL_NAV, 60);
+    const now = new Date().toISOString();
+    const date = now.split('T')[0];
+    const minuteKey = this.getMinuteKey();
+
+    const allocations = await this.generateAllocations(
+      this.INITIAL_NAV,
+      0,
+      date,
+      minuteKey
+    );
+
+    return {
+      date: date,
+      last_updated: now,
+      nav: {
+        starting_nav: this.INITIAL_NAV,
+        ending_nav: this.INITIAL_NAV,
+        growth_percent: 0,
+        chart_data: chartData
+      },
+      allocations: allocations,
+      asset_performance: this.generateAssetPerformance(prices),
+      system_status: {
+        routing_active: true,
+        hedging_engaged: false,
+        smart_layer_unlocked: true,
+        dashboard_beta_mode: true,
+        last_sync_success: true
+      },
+      visual_flags: {
+        'Smart Routing': 'On',
+        'Hedging Operational': 'Standby',
+        'Stablecoin Yield Layer': 'Running',
+        'System Sync': 'Stable'
+      },
+      daily_report_text: 'Initial portfolio data created',
+      team_notes: {
+        dev_status: 'Initial Setup',
+        developer: 'System',
+        expected_preview: 'Initial Data',
+        data_entry_mode: 'Manual Initialization'
+      }
+    };
+  }
+
+  private startAutomatedDataCollection(): void {
+    if (this.cronJob) {
+      return;
+    }
+
+    console.log('🔄 Starting automated minute crypto data collection...');
+
+    this.cronJob = cron.schedule('* * * * *', async () => {
+      if (this.isUpdating) {
+        console.log('⏳ Update already in progress, skipping this minute');
+        return;
+      }
+
       try {
+        this.isUpdating = true;
+        console.log(`⏱️ Running minute update at ${new Date().toISOString()}`);
         await this.processAndUpdateData();
       } catch (error) {
-        console.error('Scheduled update failed:', error);
+        console.error('❌ Scheduled minute update failed:', error);
+      } finally {
+        this.isUpdating = false;
       }
     });
 
-    // Initial update after 5 seconds
     setTimeout(() => {
-      this.processAndUpdateData().catch(console.error);
-    }, 5000);
+      this.processAndUpdateData().catch(error => {
+        console.error('❌ Initial update failed:', error);
+      });
+    }, 2000);
   }
 
-  /**
-   * Get latest portfolio data
-   */
   async getLatestData(): Promise<TPortfolioData | null> {
     try {
       const latestPortfolio = await this.app.db.client.portfolioData.findFirst({
-        orderBy: { date: 'desc' }
+        orderBy: { createdAt: 'desc' }
       });
 
       if (!latestPortfolio) {
-        return await this.processAndUpdateData();
+        return null;
       }
 
-      const allocations = await this.app.db.client.allocation.findMany({
-        where: { date: latestPortfolio.date }
-      });
+      const [allocations, assetPerformance, chartData] = await Promise.all([
+        this.app.db.client.allocation.findMany({
+          where: { date: latestPortfolio.date },
+          include: { AllocationHistory: true }
+        }),
+        this.app.db.client.assetPerformance.findMany({
+          where: {
+            date: latestPortfolio.date,
+            minuteKey: latestPortfolio.minuteKey
+          }
+        }),
+        this.app.db.client.chartData.findMany({
+          orderBy: { datetime: 'desc' },
+          take: 60
+        })
+      ]);
 
-      const assetPerformance = await this.app.db.client.assetPerformance.findMany({
-        where: { date: latestPortfolio.date }
-      });
-
-      const chartData = await this.app.db.client.chartData.findMany({
-        orderBy: { date: 'desc' },
-        take: 5
+      const formattedAllocations: Record<string, TAllocationData> = {};
+      allocations.forEach(alloc => {
+        formattedAllocations[alloc.key] = {
+          name: alloc.name,
+          current_balance: alloc.currentBalance,
+          history: alloc.AllocationHistory.map(h => ({
+            minuteKey: h.minuteKey,
+            starting_balance: h.startingBalance,
+            minute_gain: h.minuteGain,
+            minute_gain_percent: h.minuteGainPercent,
+            ending_balance: h.endingBalance,
+            notes: h.notes,
+            createdAt: h.createdAt.toISOString()
+          }))
+        };
       });
 
       return {
@@ -480,19 +673,12 @@ export class CryptoService {
           starting_nav: latestPortfolio.startingNav,
           ending_nav: latestPortfolio.endingNav,
           growth_percent: latestPortfolio.growthPercent,
-          chart_data: chartData
+          chart_data: chartData.map(point => ({
+            datetime: point.datetime,
+            nav: point.nav
+          }))
         },
-        allocations: allocations.reduce((acc, alloc) => {
-          acc[alloc.key] = {
-            name: alloc.name,
-            starting_balance: alloc.startingBalance,
-            daily_gain: alloc.dailyGain,
-            daily_gain_percent: alloc.dailyGainPercent,
-            ending_balance: alloc.endingBalance,
-            notes: alloc.notes
-          };
-          return acc;
-        }, {} as any),
+        allocations: formattedAllocations,
         asset_performance: assetPerformance.reduce((acc, asset) => {
           acc[asset.symbol] = {
             symbol: asset.symbol,
@@ -502,7 +688,7 @@ export class CryptoService {
             volume_usd: asset.volumeUsd
           };
           return acc;
-        }, {} as any),
+        }, {} as Record<string, TAssetPerformance>),
         system_status: JSON.parse(latestPortfolio.systemStatus || '{}'),
         visual_flags: JSON.parse(latestPortfolio.visualFlags || '{}'),
         daily_report_text: latestPortfolio.dailyReportText,
@@ -514,74 +700,221 @@ export class CryptoService {
     }
   }
 
-  /**
-   * Get NAV history
-   */
-  async getNavHistory(days: number = 30) {
+  async getNavHistory(minutes: number = 60): Promise<Array<{
+    date: string;
+    endingNav: number;
+    growthPercent: number;
+    lastUpdated: string;
+    datetime: string;
+    minuteKey: string;
+  }>> {
     try {
       const portfolioData = await this.app.db.client.portfolioData.findMany({
-        orderBy: { date: 'desc' },
-        take: days,
-        select: {
-          date: true,
-          endingNav: true,
-          growthPercent: true,
-          lastUpdated: true
-        }
+        orderBy: { createdAt: 'desc' },
+        take: minutes
       });
 
-      return portfolioData.reverse();
+      return portfolioData.map(item => ({
+        date: item.date,
+        endingNav: item.endingNav,
+        growthPercent: item.growthPercent,
+        lastUpdated: item.lastUpdated,
+        datetime: item.createdAt.toISOString(),
+        minuteKey: item.minuteKey
+      }));
     } catch (error) {
       console.error('Error fetching NAV history:', error);
       throw error;
     }
   }
 
-  /**
-   * Get allocation data
-   */
-  async getAllocations(date?: string) {
+  async getChartData(minutes: number = 60) {
     try {
-      const whereClause = date ? { date } : {};
+      const chartData = await this.app.db.client.chartData.findMany({
+        orderBy: { datetime: 'desc' },
+        take: minutes
+      });
+
+      return chartData.reverse().map(point => ({
+        datetime: point.datetime,
+        nav: point.nav
+      }));
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      throw error;
+    }
+  }
+
+  async getAllocations(date?: string): Promise<Record<string, TAllocationData>> {
+    try {
+      const whereClause: any = {};
+      if (date) whereClause.date = date;
 
       const allocations = await this.app.db.client.allocation.findMany({
         where: whereClause,
-        orderBy: { date: 'desc' },
-        take: date ? undefined : 3
+        include: { AllocationHistory: true }
       });
 
-      return allocations;
+      const result: Record<string, TAllocationData> = {};
+      allocations.forEach(alloc => {
+        result[alloc.key] = {
+          name: alloc.name,
+          current_balance: alloc.currentBalance,
+          history: alloc.AllocationHistory.map(h => ({
+            minuteKey: h.minuteKey,
+            starting_balance: h.startingBalance,
+            minute_gain: h.minuteGain,
+            minute_gain_percent: h.minuteGainPercent,
+            ending_balance: h.endingBalance,
+            notes: h.notes,
+            createdAt: h.createdAt.toISOString()
+          }))
+        };
+      });
+
+      return result;
     } catch (error) {
       console.error('Error fetching allocations:', error);
       throw error;
     }
   }
 
-  /**
-   * Get asset performance data
-   */
-  async getAssetPerformance(symbol?: string, days: number = 7) {
+  async createAllocation(data: {
+    key: string;
+    name: string;
+    initialBalance: number;
+    date?: string;
+  }): Promise<TAllocationData> {
+    const now = new Date();
+    const date = data.date || new Date().toISOString().split('T')[0];
+    const minuteKey = this.getMinuteKey(now);
+
+    // First check if allocation exists
+    const existingAllocation = await this.app.db.client.allocation.findUnique({
+      where: {
+        key_date: {
+          key: data.key,
+          date
+        }
+      },
+      include: {
+        AllocationHistory: true
+      }
+    });
+
+    if (existingAllocation) {
+      throw new Error(`Allocation with key ${data.key} already exists for date ${date}`);
+    }
+
+    // Create the allocation
+    const allocation = await this.app.db.client.allocation.create({
+      data: {
+        key: data.key,
+        name: data.name,
+        date,
+        currentBalance: data.initialBalance,
+        history: JSON.stringify([]),
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+
+    // Create the history entry
+    const historyEntry = await this.app.db.client.allocationHistory.create({
+      data: {
+        allocationId: allocation.id,
+        minuteKey,
+        startingBalance: data.initialBalance,
+        minuteGain: 0,
+        minuteGainPercent: 0,
+        endingBalance: data.initialBalance,
+        notes: 'Initial allocation created',
+        createdAt: now
+      }
+    });
+
+    // Update the allocation with the new history
+    const updatedAllocation = await this.app.db.client.allocation.update({
+      where: { id: allocation.id },
+      data: {
+        history: JSON.stringify([historyEntry])
+      },
+      include: {
+        AllocationHistory: true
+      }
+    });
+
+    return {
+      name: updatedAllocation.name,
+      current_balance: updatedAllocation.currentBalance,
+      history: updatedAllocation.AllocationHistory.map(h => ({
+        minuteKey: h.minuteKey,
+        starting_balance: h.startingBalance,
+        minute_gain: h.minuteGain,
+        minute_gain_percent: h.minuteGainPercent,
+        ending_balance: h.endingBalance,
+        notes: h.notes,
+        createdAt: h.createdAt.toISOString()
+      }))
+    };
+  }
+
+  async getAssetPerformance(symbol?: string, minutes: number = 60) {
     try {
       const whereClause: any = {};
       if (symbol) whereClause.symbol = symbol;
 
       const assetData = await this.app.db.client.assetPerformance.findMany({
         where: whereClause,
-        orderBy: { date: 'desc' },
-        take: days
+        orderBy: { createdAt: 'desc' },
+        take: minutes
       });
 
-      return assetData;
+      return assetData.map(item => ({
+        symbol: item.symbol,
+        open: item.open,
+        close: item.close,
+        change_percent: item.changePercent,
+        volume_usd: item.volumeUsd,
+        datetime: item.createdAt.toISOString()
+      }));
     } catch (error) {
       console.error('Error fetching asset performance:', error);
       throw error;
     }
   }
 
-  /**
-   * Manual trigger for testing
-   */
-  async triggerManualUpdate(): Promise<TPortfolioData> {
+  async getSystemStatusHistory(minutes: number = 60) {
+    try {
+      const statusData = await this.app.db.client.systemStatusLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: minutes
+      });
+
+      return statusData.map(item => ({
+        routing_active: item.routingActive,
+        hedging_engaged: item.hedgingEngaged,
+        smart_layer_unlocked: item.smartLayerUnlocked,
+        dashboard_beta_mode: item.dashboardBetaMode,
+        last_sync_success: item.lastSyncSuccess,
+        datetime: item.createdAt.toISOString()
+      }));
+    } catch (error) {
+      console.error('Error fetching system status history:', error);
+      throw error;
+    }
+  }
+
+  async triggerManualUpdate(): Promise<TPortfolioData | null> {
     return await this.processAndUpdateData();
   }
-};
+
+  stopAutomatedUpdates(): void {
+    if (this.cronJob) {
+      this.cronJob.stop();
+      this.cronJob = null;
+    }
+    this.isRunning = false;
+    console.log('🛑 Automated updates stopped');
+  }
+}
