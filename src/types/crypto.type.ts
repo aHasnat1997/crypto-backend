@@ -1,3 +1,5 @@
+import { TAllocationData } from "./allocation.type";
+
 export interface TCryptoPrice {
   symbol: string;
   price: number;
@@ -17,19 +19,6 @@ export interface TNavData {
   }>;
 }
 
-export interface TAllocationData {
-  name: string;
-  current_balance: number;
-  history: Array<{
-    minuteKey: string;
-    starting_balance: number;
-    minute_gain: number;
-    minute_gain_percent: number;
-    ending_balance: number;
-    notes: string;
-    createdAt: string;
-  }>;
-}
 
 export interface TAssetPerformance {
   symbol: string;

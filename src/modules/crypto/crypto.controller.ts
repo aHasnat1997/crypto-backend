@@ -1,6 +1,5 @@
 import { Rocket } from '../../app';
 import { Request, Response } from 'express';
-import { CryptoValidation } from './crypto.validation';
 import successResponse from '../../utils/successResponse';
 import { HTTPStatusCode } from '../../utils/httpCode';
 import { CryptoService } from './crypto.service';
@@ -13,40 +12,6 @@ export class CryptoController {
   constructor(app: Rocket) {
     this.app = app;
     this.service = new CryptoService(app);
-  }
-
-  async createAllocation(req: Request, res: Response) {
-    try {
-      const schema = z.object({
-        key: z.enum(['A', 'B', 'C']),
-        name: z.string().min(3),
-        initialBalance: z.number().min(0),
-        date: z.string().optional().default(new Date().toISOString().split('T')[0])
-      });
-
-      const validation = schema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(HTTPStatusCode.BadRequest).json({
-          success: false,
-          message: 'Invalid request body',
-          errors: validation.error.errors
-        });
-      }
-
-      const result = await this.service.createAllocation(validation.data);
-
-      successResponse(res, {
-        message: 'Allocation created successfully',
-        data: result
-      }, HTTPStatusCode.Created);
-    } catch (error) {
-      console.error('Error in createAllocation:', error);
-      return res.status(HTTPStatusCode.InternalServerError).json({
-        success: false,
-        message: 'Failed to create allocation',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
   }
 
   async getLatestPortfolio(req: Request, res: Response) {
@@ -105,39 +70,6 @@ export class CryptoController {
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: 'Failed to retrieve NAV history',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  }
-
-  async getAllocations(req: Request, res: Response) {
-    try {
-      const schema = z.object({
-        date: z.string().optional()
-      });
-
-      const validation = schema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(HTTPStatusCode.BadRequest).json({
-          success: false,
-          message: 'Invalid request parameters',
-          errors: validation.error.errors
-        });
-      }
-
-      const { date } = validation.data;
-      const result = await this.service.getAllocations(date);
-      const allocationsArray = Object.values(result);
-
-      successResponse(res, {
-        message: 'Allocation data retrieved successfully',
-        data: allocationsArray // Now it matches TAllocationData[]
-      }, HTTPStatusCode.Ok);
-    } catch (error) {
-      console.error('Error in getAllocations:', error);
-      return res.status(HTTPStatusCode.InternalServerError).json({
-        success: false,
-        message: 'Failed to retrieve allocation data',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -338,61 +270,6 @@ export class CryptoController {
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: 'Failed to trigger manual update',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  }
-
-  async getAllocationComparison(req: Request, res: Response) {
-    try {
-      const schema = z.object({
-        days: z.preprocess(
-          val => Number(val),
-          z.number().min(1).max(365).optional().default(7)
-        )
-      });
-
-      const validation = schema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(HTTPStatusCode.BadRequest).json({
-          success: false,
-          message: 'Invalid request parameters',
-          errors: validation.error.errors
-        });
-      }
-
-      const { days } = validation.data;
-      const allocations = await this.service.getAllocations();
-
-      if (!allocations || Object.keys(allocations).length === 0) {
-        return res.status(HTTPStatusCode.NotFound).json({
-          success: false,
-          message: 'No allocation data found',
-          data: null
-        });
-      }
-
-      const comparisonData = Object.entries(allocations).reduce((acc, [key, allocation]) => {
-        acc[key] = {
-          name: allocation.name,
-          performance: allocation.history.map(h => ({
-            date: new Date(h.createdAt).toISOString().split('T')[0],
-            daily_gain_percent: h.minute_gain_percent,
-            ending_balance: h.ending_balance
-          })).slice(0, days)
-        };
-        return acc;
-      }, {} as any);
-
-      successResponse(res, {
-        message: 'Allocation comparison retrieved successfully',
-        data: comparisonData
-      }, HTTPStatusCode.Ok);
-    } catch (error) {
-      console.error('Error in getAllocationComparison:', error);
-      return res.status(HTTPStatusCode.InternalServerError).json({
-        success: false,
-        message: 'Failed to retrieve allocation comparison',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

@@ -11,11 +11,6 @@ export function registerCryptoRoutes(app: Rocket & { cryptoController: CryptoCon
   router.get('/crypto/portfolio/summary', handelAsyncReq(controller.getPortfolioSummary.bind(controller)));
   router.get('/crypto/portfolio/nav-history', handelAsyncReq(controller.getNavHistory.bind(controller)));
 
-  // Allocation endpoints
-  router.get('/crypto/allocations', handelAsyncReq(controller.getAllocations.bind(controller)));
-  router.post('/crypto/allocations', handelAsyncReq(controller.createAllocation.bind(controller)));
-  router.get('/crypto/allocations/comparison', handelAsyncReq(controller.getAllocationComparison.bind(controller)));
-
   // Asset performance endpoints
   router.get('/crypto/assets/performance', handelAsyncReq(controller.getAssetPerformance.bind(controller)));
   router.get('/crypto/prices/current', handelAsyncReq(controller.getCurrentPrices.bind(controller)));

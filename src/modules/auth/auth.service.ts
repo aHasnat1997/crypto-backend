@@ -49,12 +49,7 @@ export class AuthService {
       this.app.config.TOKEN.TOKEN_EXPIRES_TIME
     );
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role
-    };
+    return token;
   }
 
   async logout(res: Response) {

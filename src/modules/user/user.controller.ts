@@ -1,6 +1,6 @@
 import { Rocket } from '../../app';
 import { Request, Response } from 'express';
-import { UserService } from './UserService';
+import { UserService } from './user.service';
 import successResponse from '../../utils/successResponse';
 import { HTTPStatusCode } from '../../utils/httpCode';
 

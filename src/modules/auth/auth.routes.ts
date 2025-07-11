@@ -1,4 +1,4 @@
-import { AuthController } from './AuthController';
+import { AuthController } from './auth.controller';
 import { Rocket } from '../../app';
 import { Router } from 'express';
 import handelAsyncReq from '../../utils/handelAsyncReq';
@@ -12,6 +12,7 @@ export function registerAuthRoutes(app: Rocket & { authController: AuthControlle
 
   router.post(
     '/auth/register',
+    authGuard('ADMIN'),
     validateRequest(AuthValidation.registrationSchema),
     handelAsyncReq(controller.register.bind(controller))
   );

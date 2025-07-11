@@ -37,7 +37,7 @@ export class Rocket {
   load() {
     this.app.use(express.json());
     this.app.use(cors({
-      origin: [this.config.CLIENT_URL],
+      origin: [...this.config.CLIENT_URLS],
       credentials: true
     }));
     this.app.use(cookieParser());
