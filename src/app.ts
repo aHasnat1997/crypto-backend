@@ -3,7 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { globalErrorHandler } from './error/globalErrorHandler';
 import { PrismaDB } from './db/PrismaClient';
-import { SocketServer } from './sockets/SocketServer';
+import { SocketServer } from './sockets/socket.server';
 import ejs from 'ejs';
 import path from 'path';
 import { HTTPStatusCode } from './utils/httpCode';
