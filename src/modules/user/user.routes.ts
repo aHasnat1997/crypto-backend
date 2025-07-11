@@ -1,4 +1,4 @@
-import { UserController } from './UserController';
+import { UserController } from './user.controller';
 import { Rocket } from '../../app';
 import { Router } from 'express';
 import handelAsyncReq from '../../utils/handelAsyncReq';
