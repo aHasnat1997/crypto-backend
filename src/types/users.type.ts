@@ -4,6 +4,7 @@ export type TUser = {
   email: string;
   password: string;
   fullName: string;
-  role: UserRole
-  isDeleted?: boolean
+  role: UserRole;
+  img: string;
+  isStatus?: boolean
 }

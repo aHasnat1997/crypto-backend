@@ -476,7 +476,7 @@ export class CryptoService {
 
     console.log('🔄 Starting automated minute crypto data collection...');
 
-    this.cronJob = cron.schedule('*/120 * * * *', async () => {
+    this.cronJob = cron.schedule('*/260 * * * *', async () => {
       if (this.isUpdating) {
         console.log('⏳ Update already in progress, skipping this minute');
         return;

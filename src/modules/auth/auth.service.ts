@@ -41,6 +41,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      img: user.img as string,
       role: user.role
     }
     const token = Token.sign(

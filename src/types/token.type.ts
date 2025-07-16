@@ -8,6 +8,7 @@ export type TTokenPayload = {
   fullName: string,
   email: string,
   role: UserRole,
+  img: string;
   iat?: number,
   exp?: number,
 };

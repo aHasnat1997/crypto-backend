@@ -13,13 +13,13 @@ export class AuthController {
     this.service = new AuthService(app);
   }
 
-  async register(req: Request, res: Response) {
-    const result = await this.service.register(req.body);
-    successResponse(res, {
-      message: 'User register in successfully.',
-      data: result
-    }, HTTPStatusCode.Created);
-  }
+  // async register(req: Request, res: Response) {
+  //   const result = await this.service.register(req.body);
+  //   successResponse(res, {
+  //     message: 'User register in successfully.',
+  //     data: result
+  //   }, HTTPStatusCode.Created);
+  // }
 
   async login(req: Request, res: Response) {
     const result = await this.service.login(req.body, res);

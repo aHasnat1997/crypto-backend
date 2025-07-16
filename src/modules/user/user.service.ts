@@ -1,6 +1,6 @@
 import { Rocket } from '../../app';
 import bcrypt from 'bcryptjs';
-import { TUser } from './user.model';
+import { TUser } from '../../types/users.type';
 
 export class UserService {
   private app: Rocket;
@@ -9,10 +9,11 @@ export class UserService {
   }
 
   async create(payload: TUser) {
-    const { password, ...rest } = payload
-    const hashedPassword = await bcrypt.hash(password, this.app.config.BCRYPT_SALT_ROUNDS);
+    const { password, isStatus, ...rest } = payload
+    const hashedPassword = await bcrypt.hash(password, Number(this.app.config.BCRYPT_SALT_ROUNDS));
     const userData = {
       password: hashedPassword,
+      isStatus: true,
       ...rest
     };
 
@@ -25,7 +26,7 @@ export class UserService {
   }
 
   async findAll(query: any) {
-    const fields = ["id", "email", "fullName", "createdAt"];
+    const fields = ["id", "email", "img", "role", "fullName", "createdAt", "isStatus"];
     const result = await this.app.db.findAll('user', query, {
       searchableFields: ['email', 'fullName'],
       select: fields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
@@ -37,7 +38,15 @@ export class UserService {
   async findOne(id: string) {
     const result = await this.app.db.client.user.findUnique({
       where: { id },
-      select: { id: true, email: true, fullName: true }
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        img: true,
+        isStatus: true,
+        role: true,
+        createdAt: true
+      }
     });
     return result;
   }
@@ -58,6 +67,11 @@ export class UserService {
   }
 
   delete(id: string) {
-    return this.app.db.client.user.delete({ where: { id } });
+    return this.app.db.client.user.update({
+      where: { id },
+      data: {
+        isStatus: false
+      }
+    });
   }
 }

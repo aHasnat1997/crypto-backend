@@ -33,7 +33,8 @@ export const authGuard = (...accessTo: UserRole[]): RequestHandler =>
       // Find the user in the database using the decoded token's email
       const isUserExisted = await app.db.client.user.findUniqueOrThrow({
         where: {
-          email: userTokenDecode.email
+          email: userTokenDecode.email,
+          isStatus: true
         }
       });
 
