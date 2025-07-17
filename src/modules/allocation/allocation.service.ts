@@ -230,7 +230,11 @@ export class AllocationService {
     const allocation = await this.app.db.client.allocation.findUnique({
       where: { key },
       include: {
-        AllocationHistory: true
+        AllocationHistory: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
       }
     });
     if (!allocation) {

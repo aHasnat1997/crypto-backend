@@ -137,11 +137,7 @@ export class CryptoController {
 
       successResponse(res, {
         message: 'Chart data retrieved successfully',
-        data: result.map((item: any) => ({
-          date: item.date,
-          nav: item.endingNav,
-          growth_percent: item.growthPercent
-        }))
+        data: result
       }, HTTPStatusCode.Ok);
     } catch (error) {
       console.error('Error in getChartData:', error);

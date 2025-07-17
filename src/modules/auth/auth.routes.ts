@@ -10,13 +10,6 @@ import { authGuard } from '../../middlewares/authGuard';
 export function registerAuthRoutes(app: Rocket & { authController: AuthController }, router: Router) {
   const controller = app.authController;
 
-  // router.post(
-  //   '/auth/register',
-  //   authGuard('ADMIN'),
-  //   validateRequest(AuthValidation.registrationSchema),
-  //   handelAsyncReq(controller.register.bind(controller))
-  // );
-
   router.post(
     '/auth/login',
     validateRequest(AuthValidation.loginSchema),
@@ -32,5 +25,24 @@ export function registerAuthRoutes(app: Rocket & { authController: AuthControlle
     '/auth/me',
     authGuard('ADMIN', 'USER'),
     handelAsyncReq(controller.me.bind(controller))
+  );
+
+  router.post(
+    '/auth/reset-password',
+    authGuard('ADMIN', 'USER'),
+    validateRequest(AuthValidation.resetPasswordSchema),
+    handelAsyncReq(controller.resetPassword.bind(controller))
+  );
+
+  router.post(
+    '/auth/forget-password',
+    validateRequest(AuthValidation.forgetPasswordSchema),
+    handelAsyncReq(controller.forgetPassword.bind(controller))
+  );
+
+  router.post(
+    '/auth/set-new-password',
+    validateRequest(AuthValidation.setNewPasswordSchema),
+    handelAsyncReq(controller.setNewPassword.bind(controller))
   );
 }

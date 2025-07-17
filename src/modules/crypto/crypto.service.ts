@@ -578,14 +578,7 @@ export class CryptoService {
     }
   }
 
-  async getNavHistory(minutes: number = 60): Promise<Array<{
-    date: string;
-    endingNav: number;
-    growthPercent: number;
-    lastUpdated: string;
-    datetime: string;
-    minuteKey: string;
-  }>> {
+  async getNavHistory(minutes: number = 60) {
     try {
       const portfolioData = await this.app.db.client.portfolioData.findMany({
         orderBy: { createdAt: 'desc' },
@@ -593,12 +586,14 @@ export class CryptoService {
       });
 
       return portfolioData.map(item => ({
+        id: item.id,
         date: item.date,
         endingNav: item.endingNav,
+        startingNav: item.startingNav,
         growthPercent: item.growthPercent,
         lastUpdated: item.lastUpdated,
-        datetime: item.createdAt.toISOString(),
-        minuteKey: item.minuteKey
+        datetime: item.createdAt,
+        minuteKey: item.minuteKey,
       }));
     } catch (error) {
       console.error('Error fetching NAV history:', error);

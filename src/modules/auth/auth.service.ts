@@ -1,30 +1,17 @@
 import { Rocket } from '../../app';
 import bcrypt from 'bcryptjs';
 import { Response, Request } from 'express';
-import { UserRole } from '@prisma/client';
 import { Token } from '../../utils/token';
 import { TTokenPayload } from '../../types/token.type';
-import { TUser } from '../../types/users.type';
+import { TResetPassword, TSetNewPassword, TUser } from '../../types/users.type';
+import { sandMail } from '../../controllers/sendMail';
+import path from 'path';
+import ejs from "ejs";
 
 export class AuthService {
   private app: Rocket;
   constructor(app: Rocket) {
     this.app = app;
-  }
-
-  async register(data: TUser) {
-    const { email, password, fullName, role } = data;
-    const existing = await this.app.db.client.user.findUnique({ where: { email } });
-    if (existing) {
-      throw new Error('Email already exists');
-    }
-
-    const hashed = await bcrypt.hash(password, Number(this.app.config.BCRYPT_SALT_ROUNDS));
-    const user = await this.app.db.client.user.create({
-      data: { email, password: hashed, fullName, role },
-      select: { email: true, fullName: true }
-    });
-    return user;
   }
 
   async login(data: { email: string; password: string }, res: Response) {
@@ -69,4 +56,102 @@ export class AuthService {
     if (!user) return null;
     return user;
   }
+
+  async resetPassword(userData: TUser, payload: TResetPassword) {
+    const isOldPasswordMatch = await bcrypt.compare(payload.oldPassword, userData.password);
+
+    if (!isOldPasswordMatch) throw new Error('Old password not matched.');
+
+    const newHashPassword = await bcrypt.hash(payload.newPassword, Number(this.app.config.BCRYPT_SALT_ROUNDS));
+
+    const result = await this.app.db.client.user.update({
+      where: {
+        id: userData.id
+      },
+      data: {
+        password: newHashPassword
+      },
+      select: {
+
+      }
+    });
+
+    return result;
+  }
+
+  async forgetPassword(fullClientUrl: string, email: string) {
+    // Find the user in the database by email
+    const isUserExisted = await this.app.db.client.user.findUniqueOrThrow({
+      where: { email }
+    });
+
+    // Throw an error if the user is not active
+    if (isUserExisted.isStatus === false) throw new Error('User not active!');
+
+    // Create a token payload with user details
+    const tokenPayload: TTokenPayload = {
+      id: isUserExisted.id,
+      fullName: isUserExisted.fullName,
+      img: isUserExisted.img,
+      email: isUserExisted.email,
+      role: isUserExisted.role
+    }
+
+    // Generate a token for password reset
+    const forgetPasswordToken = Token.sign(tokenPayload, this.app.config.TOKEN.FORGOT_TOKEN_SECRET, this.app.config.TOKEN.FORGOT_TOKEN_EXPIRES_TIME);
+    // Create a reset link with the token
+    const resetLink = `${fullClientUrl}?status=200&success=true&forgetToken=${forgetPasswordToken}`;
+
+    // Render the email template using EJS
+    const emailHtml = await ejs.renderFile(
+      path.join(__dirname, '../../views/emails/forgetPassword.ejs'),
+      { firstName: isUserExisted.fullName, resetLink }
+    );
+
+    // Send a forget password email with the reset link
+    await sandMail({
+      to: isUserExisted.email, // Send to the user's email
+      subject: 'Forget Password', // Set the email subject
+      html: emailHtml // Set the email content
+    });
+
+    return null; // Return null after sending the email
+  };
+
+  async setNewPassword(payload: TSetNewPassword) {
+    // Verify the provided token
+    const isTokenOk = Token.verify(payload.token, this.app.config.TOKEN.FORGOT_TOKEN_SECRET) as TTokenPayload;
+    // Throw an error if the token is invalid
+    if (!isTokenOk) throw new Error('Unauthorize to reset password.');
+
+    // Find the user in the database by email
+    const isUserExisted = await this.app.db.client.user.findFirstOrThrow({
+      where: {
+        email: isTokenOk.email,
+      }
+    });
+    // Throw an error if the user is not active
+    if (isUserExisted.isStatus === false) throw new Error('User not active!');
+
+    // Hash the new password with the configured salt rounds
+    const newHashPassword = await bcrypt.hash(payload.newPassword, Number(this.app.config.BCRYPT_SALT_ROUNDS));
+
+    // Update the user's password in the database and select specific fields to return
+    const result = await this.app.db.client.user.update({
+      where: {
+        email: isUserExisted.email
+      },
+      data: {
+        password: newHashPassword
+      },
+      select: {
+        fullName: true,
+        email: true,
+        role: true
+      }
+    })
+
+    // Return the result of the update operation
+    return result;
+  };
 }

@@ -13,14 +13,6 @@ export class AuthController {
     this.service = new AuthService(app);
   }
 
-  // async register(req: Request, res: Response) {
-  //   const result = await this.service.register(req.body);
-  //   successResponse(res, {
-  //     message: 'User register in successfully.',
-  //     data: result
-  //   }, HTTPStatusCode.Created);
-  // }
-
   async login(req: Request, res: Response) {
     const result = await this.service.login(req.body, res);
     successResponse(res, {
@@ -41,6 +33,31 @@ export class AuthController {
     const result = await this.service.me(req);
     successResponse(res, {
       message: 'User info retrieve successful.',
+      data: result
+    }, HTTPStatusCode.Ok);
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    const result = await this.service.resetPassword(req.user, req.body);
+    successResponse(res, {
+      message: 'User password reset successful.',
+      data: result
+    }, HTTPStatusCode.Ok);
+  }
+
+  async forgetPassword(req: Request, res: Response) {
+    const fullClientUrl = req.protocol + '://' + req.get('host') + '/set-new-password';
+    const result = await this.service.forgetPassword(fullClientUrl, req.body.email);
+    successResponse(res, {
+      message: 'User password reset successful.',
+      data: result
+    }, HTTPStatusCode.Ok);
+  }
+
+  async setNewPassword(req: Request, res: Response) {
+    const result = await this.service.setNewPassword(req.body);
+    successResponse(res, {
+      message: 'User password reset successful.',
       data: result
     }, HTTPStatusCode.Ok);
   }
