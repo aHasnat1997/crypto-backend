@@ -1,13 +1,15 @@
-import { Router } from 'express';
-import { Rocket } from '../app';
-import { UserController } from '../modules/user/user.controller';
-import { registerAuthRoutes } from '../modules/auth/auth.routes';
-import { registerUserRoutes } from '../modules/user/user.routes';
-import { AuthController } from '../modules/auth/auth.controller';
-import { CryptoController } from '../modules/crypto/crypto.controller';
-import { registerCryptoRoutes } from '../modules/crypto/crypto.routers';
-import { AllocationController } from '../modules/allocation/allocation.controller';
-import { registerAllocationRoutes } from '../modules/allocation/allocation.routers';
+import { Router } from "express";
+import { Rocket } from "../app";
+import { UserController } from "../modules/user/user.controller";
+import { registerAuthRoutes } from "../modules/auth/auth.routes";
+import { registerUserRoutes } from "../modules/user/user.routes";
+import { AuthController } from "../modules/auth/auth.controller";
+import { CryptoController } from "../modules/crypto/crypto.controller";
+import { registerCryptoRoutes } from "../modules/crypto/crypto.routers";
+import { AllocationController } from "../modules/allocation/allocation.controller";
+import { registerAllocationRoutes } from "../modules/allocation/allocation.routers";
+import { DailyReportController } from "../modules/daily-report/daily-report.controller";
+import { registerDailyReportRoutes } from "../modules/daily-report/daily-report.routers";
 
 export class MainRouter {
   public router: Router;
@@ -23,13 +25,30 @@ export class MainRouter {
       (app as any).authController = new AuthController(app);
       (app as any).cryptoController = new CryptoController(app);
       (app as any).allocationController = new AllocationController(app);
+      (app as any).dailyReportController = new DailyReportController(app);
 
-      registerUserRoutes(app as Rocket & { userController: UserController }, router);
-      registerAuthRoutes(app as Rocket & { authController: AuthController }, router);
-      registerCryptoRoutes(app as Rocket & { cryptoController: CryptoController }, router);
-      registerAllocationRoutes(app as Rocket & { allocationController: AllocationController }, router);
+      registerUserRoutes(
+        app as Rocket & { userController: UserController },
+        router
+      );
+      registerAuthRoutes(
+        app as Rocket & { authController: AuthController },
+        router
+      );
+      registerCryptoRoutes(
+        app as Rocket & { cryptoController: CryptoController },
+        router
+      );
+      registerAllocationRoutes(
+        app as Rocket & { allocationController: AllocationController },
+        router
+      );
+      registerDailyReportRoutes(
+        app as Rocket & { dailyReportController: DailyReportController },
+        router
+      );
     } catch (error) {
-      console.error('Error in initControllers:', error);
+      console.error("Error in initControllers:", error);
       if (error instanceof Error) {
         console.error(error.stack);
       }

@@ -1,5 +1,8 @@
 import { Rocket } from "../../app";
-import { TAllocationCreate, TAllocationData } from "../../types/allocation.type";
+import {
+  TAllocationCreate,
+  TAllocationData,
+} from "../../types/allocation.type";
 
 export class AllocationService {
   private app: Rocket;
@@ -10,41 +13,52 @@ export class AllocationService {
   }
 
   public getMinuteKey(date: Date = new Date()): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${String(date.getHours()).padStart(2, '0')}-${String(date.getMinutes()).padStart(2, '0')}`;
-  };
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(date.getDate()).padStart(2, "0")}-${String(
+      date.getHours()
+    ).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}`;
+  }
 
   private generateAllocationNotes(allocationKey: string): string {
-    const btcTrend = this.marketTrend > 0 ? 'bullish' : 'bearish';
-    const ethTrend = this.marketTrend > 0 ? 'rising' : 'falling';
+    const btcTrend = this.marketTrend > 0 ? "bullish" : "bearish";
+    const ethTrend = this.marketTrend > 0 ? "rising" : "falling";
 
     // Default notes that work for any allocation
     const defaultNotes = [
-      `Allocation ${allocationKey} performing ${this.marketTrend > 0 ? 'well' : 'poorly'}`,
+      `Allocation ${allocationKey} performing ${
+        this.marketTrend > 0 ? "well" : "poorly"
+      }`,
       `Monitoring allocation ${allocationKey}`,
       `Standard operations for allocation ${allocationKey}`,
-      `Reviewing performance of allocation ${allocationKey}`
+      `Reviewing performance of allocation ${allocationKey}`,
     ];
 
     // Specialized notes for known allocations
     const specializedNotes: Record<string, string[]> = {
       A: [
         `BTC showing ${btcTrend} momentum`,
-        `Bitcoin ${btcTrend === 'bullish' ? 'breaking resistance' : 'testing support'}`,
-        `${btcTrend === 'bullish' ? 'Increasing' : 'Decreasing'} institutional interest`,
-        `Market sentiment ${btcTrend === 'bullish' ? 'positive' : 'negative'}`
+        `Bitcoin ${
+          btcTrend === "bullish" ? "breaking resistance" : "testing support"
+        }`,
+        `${
+          btcTrend === "bullish" ? "Increasing" : "Decreasing"
+        } institutional interest`,
+        `Market sentiment ${btcTrend === "bullish" ? "positive" : "negative"}`,
       ],
       B: [
         `ETH ${ethTrend} with ${btcTrend} BTC trend`,
-        `DeFi activity ${ethTrend === 'rising' ? 'increasing' : 'decreasing'}`,
+        `DeFi activity ${ethTrend === "rising" ? "increasing" : "decreasing"}`,
         `Layer 2 solutions gaining traction`,
-        `${ethTrend === 'rising' ? 'Strong' : 'Weak'} staking activity`
+        `${ethTrend === "rising" ? "Strong" : "Weak"} staking activity`,
       ],
       C: [
-        'Stablecoin yield optimization active',
-        'Rebalancing stablecoin allocations',
-        'Exploring high-yield protocols',
-        'Risk management protocols engaged'
-      ]
+        "Stablecoin yield optimization active",
+        "Rebalancing stablecoin allocations",
+        "Exploring high-yield protocols",
+        "Risk management protocols engaged",
+      ],
     };
 
     // Use specialized notes if available, otherwise use default notes
@@ -52,7 +66,12 @@ export class AllocationService {
     return availableNotes[Math.floor(Math.random() * availableNotes.length)];
   }
 
-  async generateAllocations(totalNav: number, growthPercent: number, date: string, minuteKey: string): Promise<Record<string, TAllocationData>> {
+  async generateAllocations(
+    totalNav: number,
+    growthPercent: number,
+    date: string,
+    minuteKey: string
+  ): Promise<Record<string, TAllocationData>> {
     const allocations: Record<string, TAllocationData> = {};
     const now = new Date();
 
@@ -60,8 +79,8 @@ export class AllocationService {
       // 1. Fetch all allocations from DB
       const allocationsFromDB = await this.app.db.client.allocation.findMany({
         include: {
-          AllocationHistory: true
-        }
+          AllocationHistory: true,
+        },
       });
 
       // Return empty if no allocations exist
@@ -91,15 +110,16 @@ export class AllocationService {
             minuteGainPercent: growthPercent,
             endingBalance,
             notes: this.generateAllocationNotes(key),
-            createdAt: now
-          }
+            createdAt: now,
+          },
         });
 
         // 5. Get full history (including new entry)
-        const historyEntries = await this.app.db.client.allocationHistory.findMany({
-          where: { allocationId: alloc.id },
-          orderBy: { createdAt: 'asc' }
-        });
+        const historyEntries =
+          await this.app.db.client.allocationHistory.findMany({
+            where: { allocationId: alloc.id },
+            orderBy: { createdAt: "asc" },
+          });
 
         // 6. Update allocation with new balance and history
         await this.app.db.client.allocation.update({
@@ -107,27 +127,27 @@ export class AllocationService {
           data: {
             currentBalance: endingBalance,
             history: JSON.stringify(historyEntries),
-            updatedAt: now
-          }
+            updatedAt: now,
+          },
         });
 
         // 7. Format response
         allocations[key] = {
           name: alloc.name,
           current_balance: endingBalance,
-          history: historyEntries.map(h => ({
+          history: historyEntries.map((h) => ({
             minuteKey: h.minuteKey,
             starting_balance: h.startingBalance,
             minute_gain: h.minuteGain,
             minute_gain_percent: h.minuteGainPercent,
             ending_balance: h.endingBalance,
             notes: h.notes,
-            createdAt: h.createdAt.toISOString()
-          }))
+            createdAt: h.createdAt.toISOString(),
+          })),
         };
       }
     } catch (error) {
-      console.error('Error in generateAllocations:', error);
+      console.error("Error in generateAllocations:", error);
       throw error;
     }
 
@@ -136,21 +156,23 @@ export class AllocationService {
 
   async createAllocation(data: TAllocationCreate): Promise<TAllocationData> {
     const now = new Date();
-    const date = data.date || new Date().toISOString().split('T')[0];
+    const date = data.date || new Date().toISOString().split("T")[0];
     const minuteKey = this.getMinuteKey(now);
 
     // First check if allocation exists
     const existingAllocation = await this.app.db.client.allocation.findUnique({
       where: {
-        key: data.key
+        key: data.key,
       },
       include: {
-        AllocationHistory: true
-      }
+        AllocationHistory: true,
+      },
     });
 
     if (existingAllocation) {
-      throw new Error(`Allocation with key ${data.key} already exists for date ${date}`);
+      throw new Error(
+        `Allocation with key ${data.key} already exists for date ${date}`
+      );
     }
 
     // Create the allocation
@@ -162,8 +184,8 @@ export class AllocationService {
         currentBalance: data.initialBalance,
         history: JSON.stringify([]),
         createdAt: now,
-        updatedAt: now
-      }
+        updatedAt: now,
+      },
     });
 
     // Create the history entry
@@ -175,39 +197,48 @@ export class AllocationService {
         minuteGain: 0,
         minuteGainPercent: 0,
         endingBalance: data.initialBalance,
-        notes: 'Initial allocation created',
-        createdAt: now
-      }
+        notes: "Initial allocation created",
+        createdAt: now,
+      },
     });
 
     // Update the allocation with the new history
     const updatedAllocation = await this.app.db.client.allocation.update({
       where: { id: allocation.id },
       data: {
-        history: JSON.stringify([historyEntry])
+        history: JSON.stringify([historyEntry]),
       },
       include: {
-        AllocationHistory: true
-      }
+        AllocationHistory: true,
+      },
     });
 
     return {
       name: updatedAllocation.name,
       current_balance: updatedAllocation.currentBalance,
-      history: updatedAllocation.AllocationHistory.map(h => ({
+      history: updatedAllocation.AllocationHistory.map((h) => ({
         minuteKey: h.minuteKey,
         starting_balance: h.startingBalance,
         minute_gain: h.minuteGain,
         minute_gain_percent: h.minuteGainPercent,
         ending_balance: h.endingBalance,
         notes: h.notes,
-        createdAt: h.createdAt.toISOString()
-      }))
+        createdAt: h.createdAt.toISOString(),
+      })),
     };
   }
 
-  async getAllocations(query?: { days?: number }) {  // Explicitly type the query
-    const fields = ["id", "name", "key", "date", "currentBalance", "createdAt", "updatedAt"];
+  async getAllocations(query?: { days?: number }) {
+    // Explicitly type the query
+    const fields = [
+      "id",
+      "name",
+      "key",
+      "date",
+      "currentBalance",
+      "createdAt",
+      "updatedAt",
+    ];
 
     // Build safe query object
     const safeQuery = {
@@ -215,51 +246,96 @@ export class AllocationService {
       // Add other validated query params here if needed
     };
 
-    const allocations = await this.app.db.findAll('allocation', safeQuery, {
-      searchableFields: ["name", "key"],
-      select: fields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
-    }).exec();
+    const allocations = await this.app.db
+      .findAll("allocation", safeQuery, {
+        searchableFields: ["name", "key"],
+        select: fields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
+      })
+      .exec();
 
     return {
       data: allocations.data,
-      meta: allocations.meta
+      meta: allocations.meta,
     };
   }
 
-  async getAllocationByKey(key: string) {
+  // async getAllocationByKey(key: string) {
+  //   const allocation = await this.app.db.client.allocation.findUnique({
+  //     where: { key },
+  //     include: {
+  //       AllocationHistory: {
+  //         orderBy: {
+  //           createdAt: "desc",
+  //         },
+  //       },
+  //     },
+  //   });
+  //   if (!allocation) {
+  //     throw new Error(`Allocation with key ${key} not found`);
+  //   }
+  //   return {
+  //     name: allocation.name,
+  //     current_balance: allocation.currentBalance,
+  //     // date: allocation.date,
+  //     history: allocation.AllocationHistory.map((h) => ({
+  //       minuteKey: h.minuteKey,
+  //       starting_balance: h.startingBalance,
+  //       minute_gain: h.minuteGain,
+  //       minute_gain_percent: h.minuteGainPercent,
+  //       ending_balance: h.endingBalance,
+  //       notes: h.notes,
+  //       createdAt: h.createdAt.toISOString(),
+  //     })),
+  //   };
+  // }
+
+  async getAllocationByKey(key: string, days: number = 30) {
+    // Calculate the date threshold
+    const dateThreshold = new Date();
+    dateThreshold.setDate(dateThreshold.getDate() - days);
+
     const allocation = await this.app.db.client.allocation.findUnique({
       where: { key },
       include: {
         AllocationHistory: {
+          where: {
+            createdAt: {
+              gte: dateThreshold,
+            },
+          },
           orderBy: {
-            createdAt: 'desc'
-          }
-        }
-      }
+            createdAt: "desc",
+          },
+        },
+      },
     });
+
     if (!allocation) {
       throw new Error(`Allocation with key ${key} not found`);
     }
+
     return {
       name: allocation.name,
       current_balance: allocation.currentBalance,
-      date: allocation.date,
-      history: allocation.AllocationHistory.map(h => ({
+      history: allocation.AllocationHistory.map((h) => ({
         minuteKey: h.minuteKey,
         starting_balance: h.startingBalance,
         minute_gain: h.minuteGain,
         minute_gain_percent: h.minuteGainPercent,
         ending_balance: h.endingBalance,
         notes: h.notes,
-        createdAt: h.createdAt.toISOString()
-      }))
+        createdAt: h.createdAt.toISOString(),
+      })),
     };
   }
 
-  async updateAllocation(key: string, data: Partial<TAllocationCreate>): Promise<TAllocationData> {
+  async updateAllocation(
+    key: string,
+    data: Partial<TAllocationCreate>
+  ): Promise<TAllocationData> {
     const now = new Date();
     const allocation = await this.app.db.client.allocation.findUnique({
-      where: { key }
+      where: { key },
     });
     if (!allocation) {
       throw new Error(`Allocation with key ${key} not found`);
@@ -269,12 +345,15 @@ export class AllocationService {
       data: {
         name: data.name || allocation.name,
         date: data.date || allocation.date,
-        currentBalance: data.initialBalance !== undefined ? data.initialBalance : allocation.currentBalance,
-        updatedAt: now
+        currentBalance:
+          data.initialBalance !== undefined
+            ? data.initialBalance
+            : allocation.currentBalance,
+        updatedAt: now,
       },
       include: {
-        AllocationHistory: true
-      }
+        AllocationHistory: true,
+      },
     });
     // Create a new history entry if initialBalance is provided
     if (data.initialBalance !== undefined) {
@@ -288,30 +367,33 @@ export class AllocationService {
           minuteGainPercent: 0,
           endingBalance: data.initialBalance,
           notes: this.generateAllocationNotes(key),
-          createdAt: now
-        }
+          createdAt: now,
+        },
       });
       // Update the allocation with the new history
       await this.app.db.client.allocation.update({
         where: { id: updatedAllocation.id },
         data: {
-          history: JSON.stringify([...updatedAllocation.AllocationHistory, historyEntry]),
-          updatedAt: now
-        }
+          history: JSON.stringify([
+            ...updatedAllocation.AllocationHistory,
+            historyEntry,
+          ]),
+          updatedAt: now,
+        },
       });
     }
     return {
       name: updatedAllocation.name,
       current_balance: updatedAllocation.currentBalance,
-      history: updatedAllocation.AllocationHistory.map(h => ({
+      history: updatedAllocation.AllocationHistory.map((h) => ({
         minuteKey: h.minuteKey,
         starting_balance: h.startingBalance,
         minute_gain: h.minuteGain,
         minute_gain_percent: h.minuteGainPercent,
         ending_balance: h.endingBalance,
         notes: h.notes,
-        createdAt: h.createdAt.toISOString()
-      }))
+        createdAt: h.createdAt.toISOString(),
+      })),
     };
   }
 
@@ -321,7 +403,7 @@ export class AllocationService {
     // First find the allocation to ensure it exists
     const allocation = await this.app.db.client.allocation.findUnique({
       where: { key },
-      include: { AllocationHistory: true }
+      include: { AllocationHistory: true },
     });
 
     if (!allocation) {
@@ -331,14 +413,14 @@ export class AllocationService {
     await this.app.db.client.$transaction(async (tx) => {
       // Delete all related AllocationHistory records first
       await tx.allocationHistory.deleteMany({
-        where: { allocationId: allocation.id }
+        where: { allocationId: allocation.id },
       });
 
       // Then delete the allocation
       await tx.allocation.delete({
-        where: { key }
+        where: { key },
       });
-    })
+    });
 
     return { success: true };
   }

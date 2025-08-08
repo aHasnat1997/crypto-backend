@@ -16,20 +16,28 @@ export class AllocationController {
 
   async createAllocation(req: Request, res: Response) {
     const result = await this.service.createAllocation(req.body);
-    successResponse(res, {
-      message: 'Allocation created successfully',
-      data: result
-    }, HTTPStatusCode.Created);
+    successResponse(
+      res,
+      {
+        message: "Allocation created successfully",
+        data: result,
+      },
+      HTTPStatusCode.Created
+    );
   }
 
   async getAllocations(req: Request, res: Response) {
     const result = await this.service.getAllocations(req.query);
 
-    successResponse(res, {
-      message: 'Allocation data retrieved successfully',
-      data: result.data,
-      meta: result.meta
-    }, HTTPStatusCode.Ok);
+    successResponse(
+      res,
+      {
+        message: "Allocation data retrieved successfully",
+        data: result.data,
+        meta: result.meta,
+      },
+      HTTPStatusCode.Ok
+    );
   }
 
   async getAllocationByKey(req: Request, res: Response) {
@@ -37,14 +45,18 @@ export class AllocationController {
     if (!key) {
       return res.status(HTTPStatusCode.BadRequest).json({
         success: false,
-        message: 'Allocation key is required'
+        message: "Allocation key is required",
       });
     }
     const allocation = await this.service.getAllocationByKey(key);
-    successResponse(res, {
-      message: 'Allocation data retrieved successfully',
-      data: allocation
-    }, HTTPStatusCode.Ok);
+    successResponse(
+      res,
+      {
+        message: "Allocation data retrieved successfully",
+        data: allocation,
+      },
+      HTTPStatusCode.Ok
+    );
   }
 
   async updateAllocation(req: Request, res: Response) {
@@ -52,20 +64,24 @@ export class AllocationController {
     if (!key) {
       return res.status(HTTPStatusCode.BadRequest).json({
         success: false,
-        message: 'Allocation key is required'
+        message: "Allocation key is required",
       });
     }
     const result = await this.service.updateAllocation(key, req.body);
     if (!result) {
       return res.status(HTTPStatusCode.NotFound).json({
         success: false,
-        message: 'Allocation not found'
+        message: "Allocation not found",
       });
     }
-    successResponse(res, {
-      message: 'Allocation updated successfully',
-      data: result
-    }, HTTPStatusCode.Ok);
+    successResponse(
+      res,
+      {
+        message: "Allocation updated successfully",
+        data: result,
+      },
+      HTTPStatusCode.Ok
+    );
   }
 
   async deleteAllocation(req: Request, res: Response) {
@@ -73,15 +89,19 @@ export class AllocationController {
     if (!key) {
       return res.status(HTTPStatusCode.BadRequest).json({
         success: false,
-        message: 'Allocation key is required'
+        message: "Allocation key is required",
       });
     }
 
     const result = await this.service.deleteAllocation(key);
-    successResponse(res, {
-      message: 'Allocation deleted successfully',
-      data: result
-    }, HTTPStatusCode.Ok);
+    successResponse(
+      res,
+      {
+        message: "Allocation deleted successfully",
+        data: result,
+      },
+      HTTPStatusCode.Ok
+    );
   }
 
   // async getAllocations(req: Request, res: Response) {

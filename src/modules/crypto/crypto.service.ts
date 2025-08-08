@@ -1,24 +1,24 @@
-import { Rocket } from '../../app';
-import axios from 'axios';
-import cron, { ScheduledTask } from 'node-cron';
+import { Rocket } from "../../app";
+import axios from "axios";
+import cron, { ScheduledTask } from "node-cron";
 import {
   TPortfolioData,
   TCoinMarketCapResponse,
   TApiNinjasResponse,
   TUpdateCryptoData,
-  TAssetPerformance
-} from '../../types/crypto.type';
-import { TAllocationData } from '../../types/allocation.type';
-import { AllocationService } from '../allocation/allocation.service';
+  TAssetPerformance,
+} from "../../types/crypto.type";
+import { TAllocationData } from "../../types/allocation.type";
+import { AllocationService } from "../allocation/allocation.service";
 
 export class CryptoService {
   private app: Rocket;
   allocationService: AllocationService;
   private readonly INITIAL_NAV = 482216.56;
   private readonly ALLOCATIONS_CONFIG = {
-    A: { name: 'Bitcoin Allocation', weight: 0.49 },
-    B: { name: 'Ethereum Allocation', weight: 0.267 },
-    C: { name: 'Stablecoin Allocation', weight: 0.243 }
+    A: { name: "Bitcoin Allocation", weight: 0.49 },
+    B: { name: "Ethereum Allocation", weight: 0.267 },
+    C: { name: "Stablecoin Allocation", weight: 0.243 },
   };
   private isRunning = false;
   private cronJob: ScheduledTask | null = null;
@@ -34,17 +34,17 @@ export class CryptoService {
   private async fetchCoinMarketCapPrices(): Promise<TUpdateCryptoData | null> {
     try {
       const response = await axios.get<TCoinMarketCapResponse>(
-        'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest',
+        "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest",
         {
           params: {
-            symbol: 'BTC,ETH,USDC',
-            convert: 'USD'
+            symbol: "BTC,ETH,USDC",
+            convert: "USD",
           },
           headers: {
-            'X-CMC_PRO_API_KEY': this.app.config.API_KEY.COINMARKETCAP_API_KEY,
-            'Accept': 'application/json'
+            "X-CMC_PRO_API_KEY": this.app.config.API_KEY.COINMARKETCAP_API_KEY,
+            Accept: "application/json",
           },
-          timeout: 10000
+          timeout: 10000,
         }
       );
 
@@ -57,10 +57,10 @@ export class CryptoService {
         btcChange: data.BTC?.quote.USD.percent_change_24h || 0,
         ethChange: data.ETH?.quote.USD.percent_change_24h || 0,
         btcVolume: data.BTC?.quote.USD.volume_24h || 0,
-        ethVolume: data.ETH?.quote.USD.volume_24h || 0
+        ethVolume: data.ETH?.quote.USD.volume_24h || 0,
       };
     } catch (error) {
-      console.error('CoinMarketCap API error:', error);
+      console.error("CoinMarketCap API error:", error);
       return null;
     }
   }
@@ -69,19 +69,19 @@ export class CryptoService {
     try {
       const [btcResponse, ethResponse] = await Promise.all([
         axios.get<TApiNinjasResponse>(
-          'https://api.api-ninjas.com/v1/cryptoprice?symbol=BTCUSD',
+          "https://api.api-ninjas.com/v1/cryptoprice?symbol=BTCUSD",
           {
-            headers: { 'X-Api-Key': this.app.config.API_KEY.API_NINJAS_KEY },
-            timeout: 10000
+            headers: { "X-Api-Key": this.app.config.API_KEY.API_NINJAS_KEY },
+            timeout: 10000,
           }
         ),
         axios.get<TApiNinjasResponse>(
-          'https://api.api-ninjas.com/v1/cryptoprice?symbol=ETHUSD',
+          "https://api.api-ninjas.com/v1/cryptoprice?symbol=ETHUSD",
           {
-            headers: { 'X-Api-Key': this.app.config.API_KEY.API_NINJAS_KEY },
-            timeout: 10000
+            headers: { "X-Api-Key": this.app.config.API_KEY.API_NINJAS_KEY },
+            timeout: 10000,
           }
-        )
+        ),
       ]);
 
       const btcPrice = parseFloat(btcResponse.data.price);
@@ -95,10 +95,10 @@ export class CryptoService {
         btcChange: (Math.random() - 0.5) * 10,
         ethChange: (Math.random() - 0.5) * 8,
         btcVolume: 24300000000,
-        ethVolume: 14500000000
+        ethVolume: 14500000000,
       };
     } catch (error) {
-      console.error('API Ninjas error:', error);
+      console.error("API Ninjas error:", error);
       return null;
     }
   }
@@ -122,7 +122,7 @@ export class CryptoService {
         btcChange: simulatedTrend * (2 + Math.random() * 3),
         ethChange: simulatedTrend * (1.5 + Math.random() * 2.5),
         btcVolume: 24300000000,
-        ethVolume: 14500000000
+        ethVolume: 14500000000,
       };
     }
 
@@ -138,14 +138,18 @@ export class CryptoService {
     const ethChange = (prices.ethChange || 0) / 100 / 1440;
     const stableChange = 0.014 / 100 / 1440;
 
-    const portfolioChange = (btcWeight * btcChange) +
-      (ethWeight * ethChange) +
-      (stableWeight * stableChange);
+    const portfolioChange =
+      btcWeight * btcChange +
+      ethWeight * ethChange +
+      stableWeight * stableChange;
 
     return previousNav * (1 + portfolioChange);
   }
 
-  private async generateChartData(currentNav: number, minutes: number = 60): Promise<Array<{ datetime: string; nav: number }>> {
+  private async generateChartData(
+    currentNav: number,
+    minutes: number = 60
+  ): Promise<Array<{ datetime: string; nav: number }>> {
     const chartData = [];
     const now = new Date();
 
@@ -158,7 +162,7 @@ export class CryptoService {
 
       chartData.push({
         datetime: datetime.toISOString(),
-        nav: Number(nav.toFixed(2))
+        nav: Number(nav.toFixed(2)),
       });
     }
 
@@ -168,54 +172,72 @@ export class CryptoService {
   private generateAssetPerformance(prices: TUpdateCryptoData) {
     return {
       BTC: {
-        symbol: 'BTC',
-        open: Number(((prices.btcPrice || 0) * (1 - (prices.btcChange || 0) / 100 / 1440)).toFixed(0)),
+        symbol: "BTC",
+        open: Number(
+          (
+            (prices.btcPrice || 0) *
+            (1 - (prices.btcChange || 0) / 100 / 1440)
+          ).toFixed(0)
+        ),
         close: Number((prices.btcPrice || 0).toFixed(0)),
         change_percent: Number((prices.btcChange || 0).toFixed(2)),
-        volume_usd: prices.btcVolume || 24300000000
+        volume_usd: prices.btcVolume || 24300000000,
       },
       ETH: {
-        symbol: 'ETH',
-        open: Number(((prices.ethPrice || 0) * (1 - (prices.ethChange || 0) / 100 / 1440)).toFixed(2)),
+        symbol: "ETH",
+        open: Number(
+          (
+            (prices.ethPrice || 0) *
+            (1 - (prices.ethChange || 0) / 100 / 1440)
+          ).toFixed(2)
+        ),
         close: Number((prices.ethPrice || 0).toFixed(2)),
         change_percent: Number((prices.ethChange || 0).toFixed(2)),
-        volume_usd: prices.ethVolume || 14500000000
+        volume_usd: prices.ethVolume || 14500000000,
       },
       Stablecoin: {
         yield_daily_percent: 0.014 + (Math.random() - 0.5) * 0.004,
         platforms: [
-          { name: 'Clearpool', asset: 'USDC' },
-          { name: 'Maple Finance', asset: 'USDT' },
-          { name: 'Frax Treasury', asset: 'DAI' }
-        ]
-      }
+          { name: "Clearpool", asset: "USDC" },
+          { name: "Maple Finance", asset: "USDT" },
+          { name: "Frax Treasury", asset: "DAI" },
+        ],
+      },
     };
   }
 
-  private generateMinuteReport(growthPercent: number, btcChange: number, ethChange: number): string {
+  private generateMinuteReport(
+    growthPercent: number,
+    btcChange: number,
+    ethChange: number
+  ): string {
     const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
+    const timeString = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
     });
 
-    const performance = growthPercent > 0 ? 'gained' : 'declined';
-    const btcDirection = btcChange > 0 ? 'up' : 'down';
-    const ethDirection = ethChange > 0 ? 'up' : 'down';
+    const performance = growthPercent > 0 ? "gained" : "declined";
+    const btcDirection = btcChange > 0 ? "up" : "down";
+    const ethDirection = ethChange > 0 ? "up" : "down";
 
-    return `Minute update at ${timeString}: Portfolio ${performance} ${Math.abs(growthPercent).toFixed(6)}%. BTC ${btcDirection} ${Math.abs(btcChange / 1440).toFixed(4)}%, ETH ${ethDirection} ${Math.abs(ethChange / 1440).toFixed(4)}%.`;
+    return `Minute update at ${timeString}: Portfolio ${performance} ${Math.abs(
+      growthPercent
+    ).toFixed(6)}%. BTC ${btcDirection} ${Math.abs(btcChange / 1440).toFixed(
+      4
+    )}%, ETH ${ethDirection} ${Math.abs(ethChange / 1440).toFixed(4)}%.`;
   }
 
   private async getPreviousNAV(): Promise<number | null> {
     try {
       const latestData = await this.app.db.client.portfolioData.findFirst({
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
       return latestData?.endingNav || null;
     } catch (error) {
-      console.error('Error fetching previous NAV:', error);
+      console.error("Error fetching previous NAV:", error);
       return null;
     }
   }
@@ -228,14 +250,14 @@ export class CryptoService {
       try {
         const now = new Date();
         const minuteKey = this.allocationService.getMinuteKey(now);
-        const date = new Date().toISOString().split('T')[0];
+        const date = new Date().toISOString().split("T")[0];
 
         await this.app.db.client.portfolioData.upsert({
           where: {
             date_minuteKey: {
               date: data.date,
-              minuteKey: minuteKey
-            }
+              minuteKey: minuteKey,
+            },
           },
           update: {
             lastUpdated: data.last_updated,
@@ -246,7 +268,7 @@ export class CryptoService {
             systemStatus: JSON.stringify(data.system_status),
             visualFlags: JSON.stringify(data.visual_flags),
             teamNotes: JSON.stringify(data.team_notes),
-            updatedAt: now
+            updatedAt: now,
           },
           create: {
             date: data.date,
@@ -260,8 +282,8 @@ export class CryptoService {
             visualFlags: JSON.stringify(data.visual_flags),
             teamNotes: JSON.stringify(data.team_notes),
             createdAt: now,
-            updatedAt: now
-          }
+            updatedAt: now,
+          },
         });
 
         data.allocations = await this.allocationService.generateAllocations(
@@ -274,12 +296,14 @@ export class CryptoService {
         await this.app.db.client.assetPerformance.deleteMany({
           where: {
             date: data.date,
-            minuteKey: minuteKey
-          }
+            minuteKey: minuteKey,
+          },
         });
 
-        for (const [symbol, performance] of Object.entries(data.asset_performance)) {
-          if (symbol !== 'Stablecoin') {
+        for (const [symbol, performance] of Object.entries(
+          data.asset_performance
+        )) {
+          if (symbol !== "Stablecoin") {
             await this.app.db.client.assetPerformance.create({
               data: {
                 symbol: symbol,
@@ -290,8 +314,8 @@ export class CryptoService {
                 date: data.date,
                 minuteKey: minuteKey,
                 createdAt: now,
-                updatedAt: now
-              }
+                updatedAt: now,
+              },
             });
           }
         }
@@ -299,20 +323,20 @@ export class CryptoService {
         for (const point of data.nav.chart_data) {
           await this.app.db.client.chartData.upsert({
             where: {
-              datetime: point.datetime
+              datetime: point.datetime,
             },
             update: {
               nav: point.nav,
-              date: point.datetime.split('T')[0],
-              updatedAt: now
+              date: point.datetime.split("T")[0],
+              updatedAt: now,
             },
             create: {
               datetime: point.datetime,
               nav: point.nav,
-              date: point.datetime.split('T')[0],
+              date: point.datetime.split("T")[0],
               createdAt: now,
-              updatedAt: now
-            }
+              updatedAt: now,
+            },
           });
         }
 
@@ -326,20 +350,20 @@ export class CryptoService {
             dashboardBetaMode: data.system_status.dashboard_beta_mode,
             lastSyncSuccess: data.system_status.last_sync_success,
             createdAt: now,
-            updatedAt: now
-          }
+            updatedAt: now,
+          },
         });
 
         return;
       } catch (error: any) {
-        if (error.code === 'P2034' && attempts < MAX_RETRIES - 1) {
+        if (error.code === "P2034" && attempts < MAX_RETRIES - 1) {
           attempts++;
           const delay = Math.pow(2, attempts) * 100;
           console.warn(`⚠️ Retry attempt ${attempts} after ${delay}ms`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
-        console.error('Error saving minute data:', error);
+        console.error("Error saving minute data:", error);
         throw error;
       }
     }
@@ -347,29 +371,29 @@ export class CryptoService {
 
   async processAndUpdateData(): Promise<TPortfolioData | null> {
     if (this.isRunning) {
-      console.log('⏳ Update already in progress, skipping this minute');
-      return this.getLatestData() || await this.createInitialData();
+      console.log("⏳ Update already in progress, skipping this minute");
+      return this.getLatestData() || (await this.createInitialData());
     }
 
     this.isRunning = true;
 
     try {
-      console.log('⏱️ Starting minute crypto data update...');
+      console.log("⏱️ Starting minute crypto data update...");
 
       const prices = await this.fetchCryptoPrices();
-      const previousNav = await this.getPreviousNAV() || this.INITIAL_NAV;
+      const previousNav = (await this.getPreviousNAV()) || this.INITIAL_NAV;
       const currentNav = this.calculateNAV(prices, previousNav);
       const growthPercent = ((currentNav - previousNav) / previousNav) * 100;
       const chartData = await this.generateChartData(currentNav, 60);
 
       const cryptoData: TPortfolioData = {
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         last_updated: new Date().toISOString(),
         nav: {
           starting_nav: Number(previousNav.toFixed(2)),
           ending_nav: Number(currentNav.toFixed(2)),
           growth_percent: Number(growthPercent.toFixed(6)),
-          chart_data: chartData
+          chart_data: chartData,
         },
         allocations: {},
         asset_performance: this.generateAssetPerformance(prices),
@@ -378,13 +402,13 @@ export class CryptoService {
           hedging_engaged: Math.random() > 0.1,
           smart_layer_unlocked: true,
           dashboard_beta_mode: true,
-          last_sync_success: true
+          last_sync_success: true,
         },
         visual_flags: {
-          'Smart Routing': 'On',
-          'Hedging Operational': Math.random() > 0.1 ? 'Active' : 'Standby',
-          'Stablecoin Yield Layer': 'Running',
-          'System Sync': 'Stable'
+          "Smart Routing": "On",
+          "Hedging Operational": Math.random() > 0.1 ? "Active" : "Standby",
+          "Stablecoin Yield Layer": "Running",
+          "System Sync": "Stable",
         },
         daily_report_text: this.generateMinuteReport(
           growthPercent,
@@ -392,20 +416,19 @@ export class CryptoService {
           prices.ethChange || 0
         ),
         team_notes: {
-          dev_status: 'Active Dev - Minute Real-time Integration',
-          developer: 'Automated System',
-          expected_preview: 'Live Now',
-          data_entry_mode: 'Minute API Integration'
-        }
+          dev_status: "Active Dev - Minute Real-time Integration",
+          developer: "Automated System",
+          expected_preview: "Live Now",
+          data_entry_mode: "Minute API Integration",
+        },
       };
 
       await this.saveToPrisma(cryptoData);
 
-      console.log('✅ Minute data updated successfully');
+      console.log("✅ Minute data updated successfully");
       return cryptoData;
-
     } catch (error) {
-      console.error('❌ Error processing crypto data:', error);
+      console.error("❌ Error processing crypto data:", error);
       throw error;
     } finally {
       this.isRunning = false;
@@ -420,12 +443,12 @@ export class CryptoService {
       btcChange: 0,
       ethChange: 0,
       btcVolume: 24300000000,
-      ethVolume: 14500000000
+      ethVolume: 14500000000,
     };
 
     const chartData = await this.generateChartData(this.INITIAL_NAV, 60);
     const now = new Date().toISOString();
-    const date = now.split('T')[0];
+    const date = now.split("T")[0];
     const minuteKey = this.allocationService.getMinuteKey();
 
     const allocations = await this.allocationService.generateAllocations(
@@ -442,7 +465,7 @@ export class CryptoService {
         starting_nav: this.INITIAL_NAV,
         ending_nav: this.INITIAL_NAV,
         growth_percent: 0,
-        chart_data: chartData
+        chart_data: chartData,
       },
       allocations: allocations,
       asset_performance: this.generateAssetPerformance(prices),
@@ -451,21 +474,21 @@ export class CryptoService {
         hedging_engaged: false,
         smart_layer_unlocked: true,
         dashboard_beta_mode: true,
-        last_sync_success: true
+        last_sync_success: true,
       },
       visual_flags: {
-        'Smart Routing': 'On',
-        'Hedging Operational': 'Standby',
-        'Stablecoin Yield Layer': 'Running',
-        'System Sync': 'Stable'
+        "Smart Routing": "On",
+        "Hedging Operational": "Standby",
+        "Stablecoin Yield Layer": "Running",
+        "System Sync": "Stable",
       },
-      daily_report_text: 'Initial portfolio data created',
+      daily_report_text: "Initial portfolio data created",
       team_notes: {
-        dev_status: 'Initial Setup',
-        developer: 'System',
-        expected_preview: 'Initial Data',
-        data_entry_mode: 'Manual Initialization'
-      }
+        dev_status: "Initial Setup",
+        developer: "System",
+        expected_preview: "Initial Data",
+        data_entry_mode: "Manual Initialization",
+      },
     };
   }
 
@@ -474,11 +497,11 @@ export class CryptoService {
       return;
     }
 
-    console.log('🔄 Starting automated minute crypto data collection...');
+    console.log("🔄 Starting automated minute crypto data collection...");
 
-    this.cronJob = cron.schedule('*/260 * * * *', async () => {
+    this.cronJob = cron.schedule("*/260 * * * *", async () => {
       if (this.isUpdating) {
-        console.log('⏳ Update already in progress, skipping this minute');
+        console.log("⏳ Update already in progress, skipping this minute");
         return;
       }
 
@@ -487,15 +510,15 @@ export class CryptoService {
         console.log(`⏱️ Running minute update at ${new Date().toISOString()}`);
         await this.processAndUpdateData();
       } catch (error) {
-        console.error('❌ Scheduled minute update failed:', error);
+        console.error("❌ Scheduled minute update failed:", error);
       } finally {
         this.isUpdating = false;
       }
     });
 
     setTimeout(() => {
-      this.processAndUpdateData().catch(error => {
-        console.error('❌ Initial update failed:', error);
+      this.processAndUpdateData().catch((error) => {
+        console.error("❌ Initial update failed:", error);
       });
     }, 2000);
   }
@@ -503,7 +526,7 @@ export class CryptoService {
   async getLatestData(): Promise<TPortfolioData | null> {
     try {
       const latestPortfolio = await this.app.db.client.portfolioData.findFirst({
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
 
       if (!latestPortfolio) {
@@ -513,34 +536,34 @@ export class CryptoService {
       const [allocations, assetPerformance, chartData] = await Promise.all([
         this.app.db.client.allocation.findMany({
           where: { date: latestPortfolio.date },
-          include: { AllocationHistory: true }
+          include: { AllocationHistory: true },
         }),
         this.app.db.client.assetPerformance.findMany({
           where: {
             date: latestPortfolio.date,
-            minuteKey: latestPortfolio.minuteKey
-          }
+            minuteKey: latestPortfolio.minuteKey,
+          },
         }),
         this.app.db.client.chartData.findMany({
-          orderBy: { datetime: 'desc' },
-          take: 60
-        })
+          orderBy: { datetime: "desc" },
+          take: 60,
+        }),
       ]);
 
       const formattedAllocations: Record<string, TAllocationData> = {};
-      allocations.forEach(alloc => {
+      allocations.forEach((alloc) => {
         formattedAllocations[alloc.key] = {
           name: alloc.name,
           current_balance: alloc.currentBalance,
-          history: alloc.AllocationHistory.map(h => ({
+          history: alloc.AllocationHistory.map((h) => ({
             minuteKey: h.minuteKey,
             starting_balance: h.startingBalance,
             minute_gain: h.minuteGain,
             minute_gain_percent: h.minuteGainPercent,
             ending_balance: h.endingBalance,
             notes: h.notes,
-            createdAt: h.createdAt.toISOString()
-          }))
+            createdAt: h.createdAt.toISOString(),
+          })),
         };
       });
 
@@ -551,10 +574,10 @@ export class CryptoService {
           starting_nav: latestPortfolio.startingNav,
           ending_nav: latestPortfolio.endingNav,
           growth_percent: latestPortfolio.growthPercent,
-          chart_data: chartData.map(point => ({
+          chart_data: chartData.map((point) => ({
             datetime: point.datetime,
-            nav: point.nav
-          }))
+            nav: point.nav,
+          })),
         },
         allocations: formattedAllocations,
         asset_performance: assetPerformance.reduce((acc, asset) => {
@@ -563,17 +586,17 @@ export class CryptoService {
             open: asset.open,
             close: asset.close,
             change_percent: asset.changePercent,
-            volume_usd: asset.volumeUsd
+            volume_usd: asset.volumeUsd,
           };
           return acc;
         }, {} as Record<string, TAssetPerformance>),
-        system_status: JSON.parse(latestPortfolio.systemStatus || '{}'),
-        visual_flags: JSON.parse(latestPortfolio.visualFlags || '{}'),
+        system_status: JSON.parse(latestPortfolio.systemStatus || "{}"),
+        visual_flags: JSON.parse(latestPortfolio.visualFlags || "{}"),
         daily_report_text: latestPortfolio.dailyReportText,
-        team_notes: JSON.parse(latestPortfolio.teamNotes || '{}')
+        team_notes: JSON.parse(latestPortfolio.teamNotes || "{}"),
       };
     } catch (error) {
-      console.error('Error fetching latest data:', error);
+      console.error("Error fetching latest data:", error);
       return null;
     }
   }
@@ -581,11 +604,11 @@ export class CryptoService {
   async getNavHistory(minutes: number = 60) {
     try {
       const portfolioData = await this.app.db.client.portfolioData.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: minutes
+        orderBy: { createdAt: "asc" },
+        take: minutes,
       });
 
-      return portfolioData.map(item => ({
+      return portfolioData.map((item) => ({
         id: item.id,
         date: item.date,
         endingNav: item.endingNav,
@@ -596,7 +619,7 @@ export class CryptoService {
         minuteKey: item.minuteKey,
       }));
     } catch (error) {
-      console.error('Error fetching NAV history:', error);
+      console.error("Error fetching NAV history:", error);
       throw error;
     }
   }
@@ -604,16 +627,16 @@ export class CryptoService {
   async getChartData(minutes: number = 60) {
     try {
       const chartData = await this.app.db.client.chartData.findMany({
-        orderBy: { datetime: 'desc' },
-        take: minutes
+        orderBy: { datetime: "desc" },
+        take: minutes,
       });
 
-      return chartData.reverse().map(point => ({
+      return chartData.reverse().map((point) => ({
         datetime: point.datetime,
-        nav: point.nav
+        nav: point.nav,
       }));
     } catch (error) {
-      console.error('Error fetching chart data:', error);
+      console.error("Error fetching chart data:", error);
       throw error;
     }
   }
@@ -625,20 +648,20 @@ export class CryptoService {
 
       const assetData = await this.app.db.client.assetPerformance.findMany({
         where: whereClause,
-        orderBy: { createdAt: 'desc' },
-        take: minutes
+        orderBy: { createdAt: "desc" },
+        take: minutes,
       });
 
-      return assetData.map(item => ({
+      return assetData.map((item) => ({
         symbol: item.symbol,
         open: item.open,
         close: item.close,
         change_percent: item.changePercent,
         volume_usd: item.volumeUsd,
-        datetime: item.createdAt.toISOString()
+        datetime: item.createdAt.toISOString(),
       }));
     } catch (error) {
-      console.error('Error fetching asset performance:', error);
+      console.error("Error fetching asset performance:", error);
       throw error;
     }
   }
@@ -646,20 +669,20 @@ export class CryptoService {
   async getSystemStatusHistory(minutes: number = 60) {
     try {
       const statusData = await this.app.db.client.systemStatusLog.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: minutes
+        orderBy: { createdAt: "desc" },
+        take: minutes,
       });
 
-      return statusData.map(item => ({
+      return statusData.map((item) => ({
         routing_active: item.routingActive,
         hedging_engaged: item.hedgingEngaged,
         smart_layer_unlocked: item.smartLayerUnlocked,
         dashboard_beta_mode: item.dashboardBetaMode,
         last_sync_success: item.lastSyncSuccess,
-        datetime: item.createdAt.toISOString()
+        datetime: item.createdAt.toISOString(),
       }));
     } catch (error) {
-      console.error('Error fetching system status history:', error);
+      console.error("Error fetching system status history:", error);
       throw error;
     }
   }
@@ -674,6 +697,6 @@ export class CryptoService {
       this.cronJob = null;
     }
     this.isRunning = false;
-    console.log('🛑 Automated updates stopped');
+    console.log("🛑 Automated updates stopped");
   }
 }
