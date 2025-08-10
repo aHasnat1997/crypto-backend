@@ -7,7 +7,14 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "logs:view": "tail -f logs/combined.log",
+    "logs:errors": "tail -f logs/error.log",
+    "logs:requests": "tail -f logs/requests.log",
+    "logs:clear": "rm -rf logs/*.log",
+    "logs:analyze": "node scripts/analyze-logs.js",
+    "health:check": "kill -SIGUSR1 $(cat .pid)",
+    "debug:toggle": "kill -SIGUSR2 $(cat .pid)"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
@@ -23,7 +30,9 @@
     "multer": "^2.0.1",
     "node-cron": "^4.2.0",
     "nodemailer": "^7.0.5",
-    "socket.io": "^4.7.2",
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
     "zod": "^3.25.75"
   },
   "devDependencies": {
@@ -35,6 +44,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.4.2",
     "@types/nodemailer": "^6.4.17",
+    "@types/socket.io": "^3.0.2",
     "prisma": "^5.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.2.2"
