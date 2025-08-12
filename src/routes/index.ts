@@ -10,6 +10,7 @@ import { AllocationController } from "../modules/allocation/allocation.controlle
 import { registerAllocationRoutes } from "../modules/allocation/allocation.routers";
 import { DailyReportController } from "../modules/daily-report/daily-report.controller";
 import { registerDailyReportRoutes } from "../modules/daily-report/daily-report.routers";
+import { robustLogger } from "../utils/robustLogger";
 
 export class MainRouter {
   public router: Router;
@@ -48,9 +49,9 @@ export class MainRouter {
         router
       );
     } catch (error) {
-      console.error("Error in initControllers:", error);
+      robustLogger.error("Error in initControllers:", error);
       if (error instanceof Error) {
-        console.error(error.stack);
+        robustLogger.error("Error in initControllers stack:", error.stack);
       }
       throw error;
     }

@@ -1,5 +1,6 @@
-import nodemailer from 'nodemailer';
-import config from '../config';
+import nodemailer from "nodemailer";
+import config from "../config";
+import { robustLogger } from "../utils/robustLogger";
 
 const transporter = nodemailer.createTransport({
   host: config.SMTP.HOST,
@@ -10,15 +11,15 @@ const transporter = nodemailer.createTransport({
     pass: config.SMTP.PASS,
   },
   tls: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+  },
 });
 
 // async..await is not allowed in global scope, must use a wrapper
 export async function sandMail(payload: {
-  to: string,
-  subject: string,
-  html: string
+  to: string;
+  subject: string;
+  html: string;
 }) {
   // send mail with defined transport object
   const info = await transporter.sendMail({
@@ -28,5 +29,5 @@ export async function sandMail(payload: {
     html: payload.html, // html body
   });
 
-  console.log("Message sent: %s", info.messageId);
-};
+  robustLogger.info("Message sent: %s", info.messageId);
+}

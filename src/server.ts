@@ -99,7 +99,7 @@ class HealthMonitor {
   static start(): void {
     // Detailed health check every 2 minutes
     this.healthCheckInterval = setInterval(() => {
-      this.performHealthCheck();
+      // this.performHealthCheck();
     }, 2 * 60 * 1000);
 
     // Performance monitoring every 30 seconds
@@ -107,7 +107,7 @@ class HealthMonitor {
       this.performPerformanceCheck();
     }, 30 * 1000);
 
-    robustLogger.info("💚 Health monitoring started");
+    // robustLogger.info("💚 Health monitoring started");
   }
 
   static stop(): void {

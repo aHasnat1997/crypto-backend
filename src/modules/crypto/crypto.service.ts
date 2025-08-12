@@ -10,6 +10,7 @@ import {
 } from "../../types/crypto.type";
 import { TAllocationData } from "../../types/allocation.type";
 import { AllocationService } from "../allocation/allocation.service";
+import { robustLogger } from "../../utils/robustLogger";
 
 export class CryptoService {
   private app: Rocket;
@@ -60,7 +61,7 @@ export class CryptoService {
         ethVolume: data.ETH?.quote.USD.volume_24h || 0,
       };
     } catch (error) {
-      console.error("CoinMarketCap API error:", error);
+      robustLogger.error("CoinMarketCap API error:", error);
       return null;
     }
   }
@@ -98,7 +99,7 @@ export class CryptoService {
         ethVolume: 14500000000,
       };
     } catch (error) {
-      console.error("API Ninjas error:", error);
+      robustLogger.error("API Ninjas error:", error);
       return null;
     }
   }
@@ -237,7 +238,7 @@ export class CryptoService {
       });
       return latestData?.endingNav || null;
     } catch (error) {
-      console.error("Error fetching previous NAV:", error);
+      robustLogger.error("Error fetching previous NAV:", error);
       return null;
     }
   }
@@ -359,11 +360,11 @@ export class CryptoService {
         if (error.code === "P2034" && attempts < MAX_RETRIES - 1) {
           attempts++;
           const delay = Math.pow(2, attempts) * 100;
-          console.warn(`⚠️ Retry attempt ${attempts} after ${delay}ms`);
+          robustLogger.warn(`⚠️ Retry attempt ${attempts} after ${delay}ms`);
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
-        console.error("Error saving minute data:", error);
+        robustLogger.error("Error saving minute data:", error);
         throw error;
       }
     }
@@ -371,14 +372,14 @@ export class CryptoService {
 
   async processAndUpdateData(): Promise<TPortfolioData | null> {
     if (this.isRunning) {
-      console.log("⏳ Update already in progress, skipping this minute");
+      robustLogger.info("⏳ Update already in progress, skipping this minute");
       return this.getLatestData() || (await this.createInitialData());
     }
 
     this.isRunning = true;
 
     try {
-      console.log("⏱️ Starting minute crypto data update...");
+      robustLogger.info("⏱️ Starting minute crypto data update...");
 
       const prices = await this.fetchCryptoPrices();
       const previousNav = (await this.getPreviousNAV()) || this.INITIAL_NAV;
@@ -425,10 +426,25 @@ export class CryptoService {
 
       await this.saveToPrisma(cryptoData);
 
-      console.log("✅ Minute data updated successfully");
+      // console.log(
+      //   "Crypto data to be sent:",
+      //   JSON.stringify(cryptoData, null, 2)
+      // );
+
+      if (this.app.socketServer && this.app.socketServer.io) {
+        // Emit to all connected clients
+        this.app.socketServer.io.emit("crypto_data_update", cryptoData);
+
+        // Or emit to a specific room for crypto data
+        this.app.socketServer.io
+          .to("crypto_updates")
+          .emit("crypto_data_update", cryptoData);
+      }
+
+      robustLogger.info("✅ Minute data updated successfully");
       return cryptoData;
     } catch (error) {
-      console.error("❌ Error processing crypto data:", error);
+      robustLogger.error("❌ Error processing crypto data:", error);
       throw error;
     } finally {
       this.isRunning = false;
@@ -497,20 +513,24 @@ export class CryptoService {
       return;
     }
 
-    console.log("🔄 Starting automated minute crypto data collection...");
+    robustLogger.info("🔄 Starting automated minute crypto data collection...");
 
-    this.cronJob = cron.schedule("*/260 * * * *", async () => {
+    this.cronJob = cron.schedule("* * * * *", async () => {
       if (this.isUpdating) {
-        console.log("⏳ Update already in progress, skipping this minute");
+        robustLogger.info(
+          "⏳ Update already in progress, skipping this minute"
+        );
         return;
       }
 
       try {
         this.isUpdating = true;
-        console.log(`⏱️ Running minute update at ${new Date().toISOString()}`);
+        robustLogger.info(
+          `⏱️ Running minute update at ${new Date().toISOString()}`
+        );
         await this.processAndUpdateData();
       } catch (error) {
-        console.error("❌ Scheduled minute update failed:", error);
+        robustLogger.error("❌ Scheduled minute update failed:", error);
       } finally {
         this.isUpdating = false;
       }
@@ -518,7 +538,7 @@ export class CryptoService {
 
     setTimeout(() => {
       this.processAndUpdateData().catch((error) => {
-        console.error("❌ Initial update failed:", error);
+        robustLogger.error("❌ Initial update failed:", error);
       });
     }, 2000);
   }
@@ -567,7 +587,7 @@ export class CryptoService {
         };
       });
 
-      return {
+      const result = {
         date: latestPortfolio.date,
         last_updated: latestPortfolio.lastUpdated,
         nav: {
@@ -595,8 +615,20 @@ export class CryptoService {
         daily_report_text: latestPortfolio.dailyReportText,
         team_notes: JSON.parse(latestPortfolio.teamNotes || "{}"),
       };
+
+      if (this.app.socketServer && this.app.socketServer.io) {
+        // Emit to all connected clients
+        this.app.socketServer.io.emit("crypto-portfolio-latest", result);
+
+        // Or emit to a specific room for crypto data
+        this.app.socketServer.io
+          .to("crypto_updates")
+          .emit("crypto-portfolio-latest", result);
+      }
+
+      return result;
     } catch (error) {
-      console.error("Error fetching latest data:", error);
+      robustLogger.error("Error fetching latest data:", error);
       return null;
     }
   }
@@ -619,7 +651,7 @@ export class CryptoService {
         minuteKey: item.minuteKey,
       }));
     } catch (error) {
-      console.error("Error fetching NAV history:", error);
+      robustLogger.error("Error fetching NAV history:", error);
       throw error;
     }
   }
@@ -636,7 +668,7 @@ export class CryptoService {
         nav: point.nav,
       }));
     } catch (error) {
-      console.error("Error fetching chart data:", error);
+      robustLogger.error("Error fetching chart data:", error);
       throw error;
     }
   }
@@ -661,7 +693,7 @@ export class CryptoService {
         datetime: item.createdAt.toISOString(),
       }));
     } catch (error) {
-      console.error("Error fetching asset performance:", error);
+      robustLogger.error("Error fetching asset performance:", error);
       throw error;
     }
   }
@@ -682,7 +714,7 @@ export class CryptoService {
         datetime: item.createdAt.toISOString(),
       }));
     } catch (error) {
-      console.error("Error fetching system status history:", error);
+      robustLogger.error("Error fetching system status history:", error);
       throw error;
     }
   }
@@ -697,6 +729,6 @@ export class CryptoService {
       this.cronJob = null;
     }
     this.isRunning = false;
-    console.log("🛑 Automated updates stopped");
+    robustLogger.info("🛑 Automated updates stopped");
   }
 }

@@ -1,5 +1,6 @@
 import { Server as HTTPServer } from "http";
 import { Server as SocketIOServer, Socket } from "socket.io";
+import { robustLogger } from "../utils/robustLogger";
 
 export class SocketServer {
   public io: SocketIOServer | null = null;
@@ -21,7 +22,7 @@ export class SocketServer {
     });
 
     this.setupEventHandlers();
-    console.log("Socket.IO server initialized successfully");
+    robustLogger.info("Socket.IO server initialized successfully");
   }
 
   /**
@@ -31,7 +32,7 @@ export class SocketServer {
     if (!this.io) return;
 
     this.io.on("connection", (socket: Socket) => {
-      console.log("Socket connected:", socket.id);
+      robustLogger.info("Socket connected:", socket.id);
 
       // Handle authentication
       this.handleAuthentication(socket);
@@ -42,16 +43,51 @@ export class SocketServer {
       // Handle room management
       this.handleRooms(socket);
 
+      // Handle crypto data subscription
+      this.handleCryptoSubscription(socket);
+
       // Handle disconnection
       socket.on("disconnect", (reason: string) => {
-        console.log(`Socket disconnected: ${socket.id}, reason: ${reason}`);
+        robustLogger.info(
+          `Socket disconnected: ${socket.id}, reason: ${reason}`
+        );
         this.handleDisconnection(socket, reason);
       });
 
       // Handle errors
       socket.on("error", (error: Error) => {
-        console.error(`Socket error for ${socket.id}:`, error);
+        robustLogger.error(`Socket error for ${socket.id}:`, error);
       });
+    });
+  }
+
+  /**
+   *  Add a new method for crypto subscription handling
+   */
+  private handleCryptoSubscription(socket: Socket) {
+    // Join crypto updates room
+    socket.on("subscribe_crypto_updates", () => {
+      if (!socket.data.authenticated) {
+        socket.emit("error", { message: "Not authenticated" });
+        return;
+      }
+
+      socket.join("crypto_updates");
+      socket.emit("subscribed_crypto_updates", {
+        message: "Successfully subscribed to crypto updates",
+      });
+
+      robustLogger.info(`Socket ${socket.id} subscribed to crypto updates`);
+    });
+
+    // Leave crypto updates room
+    socket.on("unsubscribe_crypto_updates", () => {
+      socket.leave("crypto_updates");
+      socket.emit("unsubscribed_crypto_updates", {
+        message: "Successfully unsubscribed from crypto updates",
+      });
+
+      robustLogger.info(`Socket ${socket.id} unsubscribed from crypto updates`);
     });
   }
 
@@ -77,12 +113,12 @@ export class SocketServer {
             userId: data.userId,
           });
 
-          console.log(`User ${data.userId} authenticated successfully`);
+          robustLogger.info(`User ${data.userId} authenticated successfully`);
         } else {
           socket.emit("auth_error", { message: "Invalid credentials" });
         }
       } catch (error) {
-        console.error("Authentication error:", error);
+        robustLogger.error("Authentication error:", error);
         socket.emit("auth_error", { message: "Authentication failed" });
       }
     });
@@ -188,7 +224,7 @@ export class SocketServer {
         room: data.room,
       });
 
-      console.log(`User ${socket.data.userId} joined room ${data.room}`);
+      robustLogger.info(`User ${socket.data.userId} joined room ${data.room}`);
     });
 
     // Leave room
@@ -202,7 +238,7 @@ export class SocketServer {
         room: data.room,
       });
 
-      console.log(`User ${socket.data.userId} left room ${data.room}`);
+      robustLogger.info(`User ${socket.data.userId} left room ${data.room}`);
     });
 
     // Get room info
@@ -311,7 +347,7 @@ export class SocketServer {
       const sockets = await this.io.in(room).fetchSockets();
       return sockets.map((socket) => socket.id);
     } catch (error) {
-      console.error("Error getting clients in room:", error);
+      robustLogger.error("Error getting clients in room:", error);
       return [];
     }
   }
@@ -333,7 +369,7 @@ export class SocketServer {
           socketId: socket.id,
         }));
     } catch (error) {
-      console.error("Error getting users in room:", error);
+      robustLogger.error("Error getting users in room:", error);
       return [];
     }
   }
@@ -347,7 +383,9 @@ export class SocketServer {
     this.io.sockets.sockets.forEach((socket) => {
       if (socket.data.userId === userId) {
         socket.disconnect(true);
-        console.log(`User ${userId} disconnected: ${reason || "Admin action"}`);
+        robustLogger.info(
+          `User ${userId} disconnected: ${reason || "Admin action"}`
+        );
       }
     });
   }

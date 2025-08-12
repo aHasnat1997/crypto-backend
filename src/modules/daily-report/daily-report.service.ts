@@ -1,6 +1,7 @@
 import { Rocket } from "../../app";
 import { Prisma } from "@prisma/client";
 import { HTTPStatusCode } from "../../utils/httpCode";
+import { robustLogger } from "../../utils/robustLogger";
 
 export class DailyReportService {
   private app: Rocket;
@@ -39,7 +40,7 @@ export class DailyReportService {
 
       return report;
     } catch (error) {
-      console.error("Error in createDailyReport:", error);
+      robustLogger.error("Error in createDailyReport:", error);
       throw error;
     }
   }
@@ -101,7 +102,7 @@ export class DailyReportService {
         },
       };
     } catch (error) {
-      console.error("Error in getDailyReports:", error);
+      robustLogger.error("Error in getDailyReports:", error);
       throw error;
     }
   }
@@ -126,7 +127,7 @@ export class DailyReportService {
 
       return report;
     } catch (error) {
-      console.error("Error in getDailyReportById:", error);
+      robustLogger.error("Error in getDailyReportById:", error);
       throw error;
     }
   }
@@ -155,7 +156,7 @@ export class DailyReportService {
 
       return report;
     } catch (error) {
-      console.error("Error in updateDailyReport:", error);
+      robustLogger.error("Error in updateDailyReport:", error);
       throw error;
     }
   }
@@ -171,7 +172,7 @@ export class DailyReportService {
 
       return report;
     } catch (error) {
-      console.error("Error in deleteDailyReport:", error);
+      robustLogger.error("Error in deleteDailyReport:", error);
       throw error;
     }
   }
@@ -215,7 +216,7 @@ export class DailyReportService {
         isAutomated: true,
       };
     } catch (error) {
-      console.error("Error in generateAutomatedDailyReport:", error);
+      robustLogger.error("Error in generateAutomatedDailyReport:", error);
       throw error;
     }
   }
@@ -233,7 +234,7 @@ export class DailyReportService {
 
       return automatedReport;
     } catch (error) {
-      console.error("Error in getTodaysAutomatedReport:", error);
+      robustLogger.error("Error in getTodaysAutomatedReport:", error);
       throw error;
     }
   }

@@ -3,6 +3,7 @@ import {
   TAllocationCreate,
   TAllocationData,
 } from "../../types/allocation.type";
+import { robustLogger } from "../../utils/robustLogger";
 
 export class AllocationService {
   private app: Rocket;
@@ -147,7 +148,7 @@ export class AllocationService {
         };
       }
     } catch (error) {
-      console.error("Error in generateAllocations:", error);
+      robustLogger.error("Error in generateAllocations:", error);
       throw error;
     }
 

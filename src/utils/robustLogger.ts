@@ -205,7 +205,7 @@ export class RobustLogger {
   private performanceMonitor = PerformanceMonitor;
 
   private constructor() {
-    this.setupPeriodicReports();
+    // this.setupPeriodicReports();
     this.logSystemInfo();
   }
 
@@ -364,16 +364,16 @@ export class RobustLogger {
   // System monitoring
   private logSystemInfo(): void {
     const systemInfo = {
-      // nodeVersion: process.version,
-      // platform: `${process.platform} ${process.arch}`,
-      // processId: process.pid,
-      // workingDirectory: process.cwd(),
+      nodeVersion: process.version,
+      platform: `${process.platform} ${process.arch}`,
+      processId: process.pid,
+      workingDirectory: process.cwd(),
       environment: process.env.NODE_ENV || "development",
       memoryUsage: process.memoryUsage(),
       timestamp: new Date().toISOString(),
     };
 
-    this.info("System Information", systemInfo);
+    // this.info("System Information", systemInfo);
   }
 
   private setupPeriodicReports(): void {

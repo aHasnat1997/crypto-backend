@@ -58,19 +58,19 @@ export class Rocket {
 
       // Log incoming request
       this.logger.info(`📥 Incoming Request`, {
-        correlationId,
-        method: req.method,
-        url: req.originalUrl,
-        clientIP: this.getClientIP(req),
-        userAgent: req.headers["user-agent"],
-        contentType: req.headers["content-type"],
-        contentLength: req.headers["content-length"],
-        referer: req.headers.referer,
-        queryParams: Object.keys(req.query).length > 0 ? req.query : undefined,
-        cookies:
-          Object.keys(req.cookies || {}).length > 0
-            ? Object.keys(req.cookies)
-            : undefined,
+        // correlationId,
+        // method: req.method,
+        // url: req.originalUrl,
+        // clientIP: this.getClientIP(req),
+        // userAgent: req.headers["user-agent"],
+        // contentType: req.headers["content-type"],
+        // contentLength: req.headers["content-length"],
+        // referer: req.headers.referer,
+        // queryParams: Object.keys(req.query).length > 0 ? req.query : undefined,
+        // cookies:
+        //   Object.keys(req.cookies || {}).length > 0
+        //     ? Object.keys(req.cookies)
+        //     : undefined,
       });
 
       // Log request body for debugging (in development)
@@ -325,14 +325,14 @@ export class Rocket {
         const correlationId = (req as any).correlationId;
 
         this.logger.error("🚨 Global Error Handler", {
-          correlationId,
-          error: error.message,
-          stack: error.stack,
-          url: req.originalUrl,
-          method: req.method,
-          clientIP: this.getClientIP(req),
-          userAgent: req.headers["user-agent"],
-          timestamp: new Date().toISOString(),
+          // correlationId,
+          // error: error.message,
+          // stack: error.stack,
+          // url: req.originalUrl,
+          // method: req.method,
+          // clientIP: this.getClientIP(req),
+          // userAgent: req.headers["user-agent"],
+          // timestamp: new Date().toISOString(),
         });
 
         // Call your existing global error handler
@@ -450,31 +450,31 @@ export class Rocket {
       const memUsage = process.memoryUsage();
 
       this.logger.info("📊 Post-Launch System Status", {
-        server: {
-          status: "RUNNING",
-          url: `http://${host}`,
-          uptime: `${Math.round(process.uptime())}s`,
-        },
-        database: {
-          status: "CONNECTED", // Adjust based on your DB check
-          // You can add actual DB connection check here
-        },
-        socketIO: {
-          status: this.socketServer.io ? "ACTIVE" : "INACTIVE",
-          connections: this.socketServer.io
-            ? this.socketServer.io.engine.clientsCount
-            : 0,
-        },
-        // memory: {
-        //   heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
-        //   heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
-        //   rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        // server: {
+        //   status: "RUNNING",
+        //   url: `http://${host}`,
+        //   uptime: `${Math.round(process.uptime())}s`,
         // },
-        environment: {
-          nodeEnv: process.env.NODE_ENV || "development",
-          nodeVersion: process.version,
-          platform: process.platform,
-        },
+        // database: {
+        //   status: "CONNECTED", // Adjust based on your DB check
+        //   // You can add actual DB connection check here
+        // },
+        // socketIO: {
+        //   status: this.socketServer.io ? "ACTIVE" : "INACTIVE",
+        //   connections: this.socketServer.io
+        //     ? this.socketServer.io.engine.clientsCount
+        //     : 0,
+        // },
+        // // memory: {
+        // //   heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        // //   heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+        // //   rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        // // },
+        // environment: {
+        //   nodeEnv: process.env.NODE_ENV || "development",
+        //   nodeVersion: process.version,
+        //   platform: process.platform,
+        // },
       });
     }, 1000);
   }

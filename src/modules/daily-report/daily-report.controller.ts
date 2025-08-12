@@ -6,6 +6,7 @@ import successResponse from "../../utils/successResponse";
 import z from "zod";
 import { DailyReportValidation } from "./daily-report.validation";
 import { authGuard } from "../../middlewares/authGuard";
+import { robustLogger } from "../../utils/robustLogger";
 
 export class DailyReportController {
   private app: Rocket;
@@ -56,7 +57,7 @@ export class DailyReportController {
         HTTPStatusCode.Created
       );
     } catch (error) {
-      console.error("Error in createDailyReport:", error);
+      robustLogger.error("Error in createDailyReport:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to create daily report",
@@ -94,7 +95,7 @@ export class DailyReportController {
         HTTPStatusCode.Ok
       );
     } catch (error) {
-      console.error("Error in getDailyReports:", error);
+      robustLogger.error("Error in getDailyReports:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to retrieve daily reports",
@@ -135,7 +136,7 @@ export class DailyReportController {
         HTTPStatusCode.Ok
       );
     } catch (error) {
-      console.error("Error in getDailyReportById:", error);
+      robustLogger.error("Error in getDailyReportById:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to retrieve daily report",
@@ -187,7 +188,7 @@ export class DailyReportController {
         HTTPStatusCode.Ok
       );
     } catch (error) {
-      console.error("Error in updateDailyReport:", error);
+      robustLogger.error("Error in updateDailyReport:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to update daily report",
@@ -221,7 +222,7 @@ export class DailyReportController {
         HTTPStatusCode.Ok
       );
     } catch (error) {
-      console.error("Error in deleteDailyReport:", error);
+      robustLogger.error("Error in deleteDailyReport:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to delete daily report",
@@ -246,7 +247,7 @@ export class DailyReportController {
         HTTPStatusCode.Ok
       );
     } catch (error) {
-      console.error("Error in getAutomatedDailyReport:", error);
+      robustLogger.error("Error in getAutomatedDailyReport:", error);
       return res.status(HTTPStatusCode.InternalServerError).json({
         success: false,
         message: "Failed to generate automated daily report",
